@@ -282,7 +282,11 @@ export function Console() {
 
           <section className="cx-panel">
             <div className="cx-phead"><h2>Student</h2><span className="cx-dcode">{detail ? `${detail.code} · 7${detail.section} · ${detail.subject}` : "—"}</span></div>
-            <div className="cx-pbody">{detail ? <Detail d={detail} /> : <p style={{ color: "var(--muted)", fontSize: 13 }}>Select a student.</p>}</div>
+            <div className="cx-pbody">
+              {detail
+                ? <><Detail d={detail} /><PtmRow code={detail.code} /></>
+                : <p style={{ color: "var(--muted)", fontSize: 13 }}>Select a student.</p>}
+            </div>
           </section>
         </div>
       </div>
@@ -302,6 +306,59 @@ function Kpi({ cls, l, v, unit, u }: { cls: string; l: string; v: string | numbe
       <div className="stripe" /><div className="l">{l}</div>
       <div className="v">{v}{unit && <small>{unit}</small>}</div>
       <div className="u">{u}</div>
+    </div>
+  );
+}
+
+/** Attach a real name to a code, then open the PTM report.
+ *
+ *  The only PII the system holds, and the flow is shaped so it stays that way:
+ *  the teacher asks the child for their code in person, so the code-to-name
+ *  link never travels through the app. Clearing the field deletes the link.
+ */
+function PtmRow({ code }: { code: string }) {
+  const nav = useNavigate();
+  const [name, setName] = useState("");
+  const [saved, setSaved] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  useEffect(() => {
+    setName(""); setSaved(null);
+    api.report(code).then((r) => { setSaved(r.real_name); setName(r.real_name); }).catch(() => {});
+  }, [code]);
+
+  const save = async () => {
+    setBusy(true);
+    try {
+      const out = await api.setStudentName(code, name.trim());
+      setSaved(out.real_name);
+    } catch { /* leave the field as typed so nothing is silently lost */ }
+    setBusy(false);
+  };
+
+  return (
+    <div className="cx-ptm">
+      <div className="cx-dlabel">Parents' evening</div>
+      <p className="cx-ptmnote">
+        Ask the child for their code in person, then attach their name here. It stays in
+        this console — it is never written to a research export, and clearing the box
+        removes it.
+      </p>
+      <div className="cx-ptmrow">
+        <input
+          className="cx-ptmin"
+          value={name}
+          placeholder="Child's name (optional)"
+          onChange={(e) => setName(e.target.value)}
+          onKeyDown={(e) => { if (e.key === "Enter") save(); }}
+        />
+        <button className="cx-ptmbtn ghost" onClick={save} disabled={busy || name.trim() === (saved ?? "")}>
+          {busy ? "Saving…" : saved && name.trim() === saved ? "Saved" : "Save"}
+        </button>
+        <button className="cx-ptmbtn" onClick={() => nav(`/report/${encodeURIComponent(code)}`)}>
+          Report card ›
+        </button>
+      </div>
     </div>
   );
 }

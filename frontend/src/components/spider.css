@@ -1,0 +1,37 @@
+/* Radar chart. Colours come from tokens.css so the plot belongs to whichever
+   screen hosts it, and every stroke is non-scaling so the web stays hairline
+   at any size. */
+
+.spider { display: block; width: 100%; max-width: 380px; height: auto; margin: 0 auto; overflow: visible; }
+
+.sp-ring { fill: none; stroke: var(--line); stroke-width: 1; vector-effect: non-scaling-stroke; }
+.sp-spoke { stroke: var(--line2); stroke-width: 1; vector-effect: non-scaling-stroke; }
+
+/* The 0.62 developing line. Dashed so it reads as a target, not as data. */
+.sp-threshold { fill: none; stroke: color-mix(in oklab, var(--fragile) 55%, transparent);
+  stroke-width: 1; stroke-dasharray: 3 4; vector-effect: non-scaling-stroke; }
+
+/* Cohort/compare series: outline only, so it never competes with the child. */
+.sp-compare { fill: none; stroke: color-mix(in oklab, var(--muted) 70%, transparent);
+  stroke-width: 1.5; stroke-dasharray: 5 3; vector-effect: non-scaling-stroke; }
+
+.sp-fill { fill: color-mix(in oklab, var(--cyan) 22%, transparent);
+  stroke: var(--cyan); stroke-width: 2; stroke-linejoin: round;
+  vector-effect: non-scaling-stroke;
+  filter: drop-shadow(0 0 10px color-mix(in oklab, var(--cyan) 45%, transparent)); }
+
+.sp-node { fill: var(--cyan); }
+/* Thin evidence is drawn hollow: the value is a guess, and it should look
+   like one rather than like a measurement. */
+.sp-node.thin { fill: var(--bg); stroke: var(--fragile); stroke-width: 1.5;
+  vector-effect: non-scaling-stroke; }
+
+.sp-label { font-family: var(--disp); font-size: 11px; letter-spacing: .08em;
+  text-transform: uppercase; fill: var(--muted); }
+.sp-label.thin { fill: var(--fragile); }
+.sp-thin-mark { font-family: var(--mono); }
+.sp-legend { font-size: 9.5px; letter-spacing: .16em; text-transform: uppercase; fill: var(--faint); }
+
+@media (max-width: 420px) {
+  .sp-label { font-size: 9.5px; letter-spacing: .04em; }
+}

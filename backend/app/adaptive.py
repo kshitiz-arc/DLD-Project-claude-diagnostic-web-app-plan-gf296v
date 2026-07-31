@@ -51,10 +51,10 @@ from .models import Item, Response
 # the fingerprint stays broad. All [assumption — tunable], env-overridable so
 # a pilot can be re-tuned without a redeploy.
 VARIANCE_STOP = float(os.environ.get("HYPERION_VARIANCE_STOP", "0.02"))
-SESSION_CAP = int(os.environ.get("HYPERION_SESSION_CAP", "30"))
-# 10 strands x 4 = 40 reachable, so a 30-item sitting is not starved by the
-# per-concept budget. At CONCEPT_CAP=3 the ceiling is exactly 30 and every
-# concept would have to max out to get there, which never happens in practice.
+SESSION_CAP = int(os.environ.get("HYPERION_SESSION_CAP", "35"))
+# 10 strands x 4 = 40 reachable, so a 35-item sitting has headroom over the
+# per-concept budget. The bank holds 44 items with a minimum of 4 per strand,
+# so CONCEPT_CAP=4 is exactly what the authored bank can sustain.
 CONCEPT_CAP = int(os.environ.get("HYPERION_CONCEPT_CAP", "4"))
 # Items served hardest-first across distinct concepts before adaptivity starts.
 OPENING_HARD = int(os.environ.get("HYPERION_OPENING_HARD", "6"))

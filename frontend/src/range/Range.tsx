@@ -24,8 +24,10 @@
  */
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { useAuth } from "../auth/AuthProvider";
 import { Icon } from "../components/Sprite";
 import { prefersReducedMotion } from "../hooks/useTheme";
+import { api } from "../api";
 import "./range.css";
 
 const RUN_MS = 60_000;
@@ -70,7 +72,11 @@ function makeDrill(): Drill {
 
 export function Range() {
   const nav = useNavigate();
+  const { session } = useAuth();
   const reduce = useRef(prefersReducedMotion());
+  // Anonymous drop-ins are welcome to warm up; there is just nobody to credit
+  // the minutes to, so the run simply isn't logged.
+  const codeRef = useRef(session?.role === "student" ? session.student.code : "");
 
   const [phase, setPhase] = useState<"idle" | "run" | "done">("idle");
   const [drill, setDrill] = useState<Drill>(() => makeDrill());
@@ -91,13 +97,33 @@ export function Range() {
     setPhase("run");
   }, []);
 
+  // Latest tallies, so the run-ended effect can report without re-arming the
+  // clock every time a counter moves.
+  const tally = useRef({ hits: 0, miss: 0, best: 0 });
+  tally.current = { hits, miss, best };
+
   useEffect(() => {
     if (phase !== "run") return;
     let raf = 0;
     const tick = () => {
       const left = Math.max(0, endsAt.current - performance.now());
       setLeftMs(left);
-      if (left <= 0) { setPhase("done"); return; }
+      if (left <= 0) {
+        setPhase("done");
+        // Report *time on task only*. RANGE content stays outside the
+        // Q-matrix and this never reaches a concept posterior or a score —
+        // it exists so a teacher can see effort. Offline: it just doesn't
+        // count, which is the right failure for a non-assessed warm-up.
+        const t = tally.current;
+        if (codeRef.current) {
+          api.logPractice({
+            code: codeRef.current,
+            seconds: Math.round(RUN_MS / 1000),
+            hits: t.hits, misses: t.miss, best_streak: t.best,
+          }).catch(() => { /* not measured; losing it costs nothing */ });
+        }
+        return;
+      }
       raf = requestAnimationFrame(tick);
     };
     raf = requestAnimationFrame(tick);

@@ -3,8 +3,9 @@ import { useNavigate } from "react-router-dom";
 import { useAuth } from "../auth/AuthProvider";
 import { prefersReducedMotion, useTheme } from "../hooks/useTheme";
 import { Icon } from "../components/Sprite";
+import { Spider } from "../components/Spider";
 import { useParticles } from "./useParticles";
-import { api, type BoardEntry } from "../api";
+import { api, type BoardEntry, type StudentHistory } from "../api";
 import {
   brierReward, classifyCell, confidenceStrength, directionCorrect, rtValid, xpItem,
   type DiagnosticCell, type ResponseOption,
@@ -42,6 +43,9 @@ const BOARDS: { k: "calibration" | "growth" | "effort"; label: string; unit: str
     blurb: "Answers that cleared the reading floor. Tapping through fast earns exactly nothing here." },
 ];
 const rankFromHeat = (h: number) => Math.max(0, Math.min(RANKS.length - 1, Math.floor(h / TIER)));
+
+/** Fingerprint axes, in the bank's canonical strand order. */
+const SPIDER_CONCEPTS = Object.keys(CONCEPT_SYMBOL);
 
 /* Devil Trigger — what a filled meter actually buys.
 
@@ -92,7 +96,11 @@ export function Session() {
   const { canvasRef, burst } = useParticles();
   const reduce = useRef(prefersReducedMotion());
 
-  const code = session?.role === "student" ? session.student.code : "KESTREL·4F";
+  // null means "nobody signed in" — someone opened /session directly. Using a
+  // sentinel code here meant a child who genuinely owned that call-sign was
+  // silently handed a brand-new account instead of their own.
+  const signedInCode = session?.role === "student" ? session.student.code : null;
+  const code = signedInCode ?? "GUEST";
   const av = code.replace(/[^A-Z0-9]/gi, "").slice(0, 2).toUpperCase();
 
   const [lens, setLens] = useState(false);
@@ -116,6 +124,11 @@ export function Session() {
   const [dtLeft, setDtLeft] = useState(0);
   const [triggers, setTriggers] = useState(0);
   const [counts, setCounts] = useState<Record<DiagnosticCell, number>>({ SECURE: 0, FRAGILE: 0, GAP: 0, MISCONCEPTION: 0 });
+  // Per-concept tallies for the fingerprint. Built from what this sitting
+  // actually saw rather than fetched, so the chart is true offline and needs
+  // no console-scoped endpoint from a student's browser.
+  const [byConcept, setByConcept] = useState<Record<string, { seen: number; correct: number; misc: number; rt: number }>>({});
+  const [history, setHistory] = useState<StudentHistory | null>(null);
   const [agg, setAgg] = useState({ sSum: 0, bSum: 0, vN: 0 });
   const [base, setBase] = useState(ARSENAL.map(() => ({ xp: 0, miss: 0 })));
   const [verdict, setVerdict] = useState<Verdict | null>(null);
@@ -173,8 +186,9 @@ export function Session() {
       liveRef.current = false; sidRef.current = null; cursor.current = 0;
       let needsTutorial = false;
       try {
-        let c = code;
-        if (!c || c === "KESTREL·4F") c = (await api.createStudent({ section: "B", avatar_id: 1 })).code;
+        // Only mint an account when nobody is signed in at all. Matching on a
+        // code value would steal the sitting of whoever owned that call-sign.
+        const c = signedInCode ?? (await api.createStudent({ section: "B", avatar_id: 1 })).code;
         codeRef.current = c;
         // The scale anchor runs once per child (plan §8); the server remembers,
         // so a re-sit isn't slowed down by a tutorial they've already seen.
@@ -197,7 +211,7 @@ export function Session() {
       setBooted(true);
     })();
     return () => { cancelled = true; };
-  }, [runKey, loadNext, code]);
+  }, [runKey, loadNext, signedInCode]);
 
   // Board data is only meaningful once the sitting is over, so fetch it then.
   useEffect(() => {
@@ -208,6 +222,16 @@ export function Session() {
       .catch(() => { if (!cancelled) setEntries(null); });
     return () => { cancelled = true; };
   }, [done, board]);
+
+  // The child's running record across every sitting and every RANGE run.
+  useEffect(() => {
+    if (!done) return;
+    let cancelled = false;
+    api.history(codeRef.current)
+      .then((h) => { if (!cancelled) setHistory(h); })
+      .catch(() => { if (!cancelled) setHistory(null); });
+    return () => { cancelled = true; };
+  }, [done]);
 
   useEffect(() => { rootRef.current?.style.setProperty("--rank", RANKS[rankIndex].color); }, [rankIndex]);
 
@@ -318,6 +342,18 @@ export function Session() {
 
     if (valid) {
       setCounts((c) => ({ ...c, [cl]: c[cl] + 1 }));
+      setByConcept((m) => {
+        const cur = m[item.strand] ?? { seen: 0, correct: 0, misc: 0, rt: 0 };
+        return {
+          ...m,
+          [item.strand]: {
+            seen: cur.seen + 1,
+            correct: cur.correct + (sc.dirCorrect ? 1 : 0),
+            misc: cur.misc + (cl === "MISCONCEPTION" ? 1 : 0),
+            rt: cur.rt + rt,
+          },
+        };
+      });
       setAgg((a) => ({ sSum: a.sSum + s, bSum: a.bSum + (confidenceStrength(r) - (sc.dirCorrect ? 1 : 0)), vN: a.vN + 1 }));
       const bi = STRAND_TO_ARM[item.strand];
       if (bi != null) setBase((b) => b.map((x, i) => (i === bi ? { xp: x.xp + gain, miss: x.miss + (cl === "MISCONCEPTION" ? 1 : 0) } : x)));
@@ -368,9 +404,22 @@ export function Session() {
     setDtActive(false); setDtLeft(0); setTriggers(0);
     setRankIndex(rankFromHeat(250)); setCombo(0); setOrbs(0); setDt(0); setAnswered(0);
     setCounts({ SECURE: 0, FRAGILE: 0, GAP: 0, MISCONCEPTION: 0 }); setAgg({ sSum: 0, bSum: 0, vN: 0 });
+    setByConcept({}); setHistory(null);
     setBase(ARSENAL.map(() => ({ xp: 0, miss: 0 }))); setVerdict(null); setDone(false); setItem(null); setBooted(false);
     setRunKey((k) => k + 1);
   };
+
+  // Beta(1,1) posterior mean, the same smoothing the server's mastery model
+  // uses: an unseen concept sits at 0.5 rather than 0, and one lucky hit does
+  // not read as total mastery.
+  const spiderAxes = SPIDER_CONCEPTS.map((label) => {
+    const c = byConcept[label];
+    return {
+      label,
+      value: c ? (c.correct + 1) / (c.seen + 2) : 0.5,
+      evidence: c?.seen ?? 0,
+    };
+  });
 
   const sBar = agg.vN ? agg.sSum / agg.vN : 0;
   const bias = agg.vN ? agg.bSum / agg.vN : 0;
@@ -455,13 +504,112 @@ export function Session() {
               </span>
             </div>
 
-            <div className="sx-cellrow">
-              {(["SECURE", "FRAGILE", "GAP", "MISCONCEPTION"] as DiagnosticCell[]).map((cl) => (
-                <div key={cl} className="sx-cp" style={{ ["--cc" as string]: CELLMETA[cl].color }}>
-                  <div className="n">{counts[cl]}</div><div className="l">{cl}</div>
-                </div>
-              ))}
+            {/* Plain view. Three plain-language buckets, not four pieces of
+                jargon — a twelve-year-old should be able to read their own
+                result without a glossary. The precise four-cell breakdown is
+                still there, one Lens click away. */}
+            <div className="sx-plain">
+              <div className="sx-pl" style={{ ["--cc" as string]: "var(--secure)" }}>
+                <div className="n">{counts.SECURE}</div>
+                <div className="l">Solid</div>
+                <div className="d">right, and you knew it</div>
+              </div>
+              <div className="sx-pl" style={{ ["--cc" as string]: "var(--fragile)" }}>
+                <div className="n">{counts.FRAGILE + counts.GAP}</div>
+                <div className="l">Shaky</div>
+                <div className="d">you weren't sure — that's honest</div>
+              </div>
+              <div className="sx-pl" style={{ ["--cc" as string]: "var(--misc)" }}>
+                <div className="n">{counts.MISCONCEPTION}</div>
+                <div className="l">Worth a look</div>
+                <div className="d">sure, but it didn't hold up</div>
+              </div>
             </div>
+
+            {history && (
+              <div className="sx-grind">
+                <div className="sx-gtitle">
+                  <b>{history.grind.title}</b>
+                  <span>{history.grind.tagline}</span>
+                </div>
+                <div className="sx-gstats">
+                  <span><b>{history.sessions_started}</b> sittings</span>
+                  <span><b>{history.test_hours.toFixed(1)}h</b> in the test</span>
+                  <span><b>{history.range_hours.toFixed(1)}h</b> on the RANGE</span>
+                  <span><b>{history.total_hours.toFixed(1)}h</b> total grind</span>
+                </div>
+                {history.grind.next_title && (
+                  <div className="sx-gnext">
+                    <div className="sx-gbar"><i style={{ width: `${history.grind.progress * 100}%` }} /></div>
+                    <span>{history.grind.hours_to_next}h to <b>{history.grind.next_title}</b></span>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {!lens && (
+              <p className="sx-lenshint">
+                Turn on <b>Lens</b> (top right) to see the full breakdown — your concept
+                fingerprint, calibration, and where the evidence is thin.
+              </p>
+            )}
+
+            {lens && (
+              <div className="sx-adv">
+                <div className="sx-advgrid">
+                  <div>
+                    <p className="sx-sec">Concept fingerprint</p>
+                    <Spider axes={spiderAxes} />
+                    <p className="sx-note">
+                      Distance from the centre is how well that concept held up. The dashed
+                      ring is the "developing" line. A hollow point marked <b>?</b> means
+                      too few items to be sure yet — a spike on one question is not a claim.
+                    </p>
+                  </div>
+                  <div>
+                    <p className="sx-sec">The four cells</p>
+                    <div className="sx-cellrow">
+                      {(["SECURE", "FRAGILE", "GAP", "MISCONCEPTION"] as DiagnosticCell[]).map((cl) => (
+                        <div key={cl} className="sx-cp" style={{ ["--cc" as string]: CELLMETA[cl].color }}>
+                          <div className="n">{counts[cl]}</div><div className="l">{cl}</div>
+                        </div>
+                      ))}
+                    </div>
+
+                    <p className="sx-sec" style={{ marginTop: 18 }}>Measurement</p>
+                    <dl className="sx-metrics">
+                      <div><dt>signed s̄</dt><dd className={sBar < 0 ? "neg" : "pos"}>
+                        {agg.vN ? `${sBar >= 0 ? "+" : ""}${sBar.toFixed(3)}` : "—"}</dd></div>
+                      <div><dt>calibration</dt><dd>
+                        {agg.vN ? `${bias >= 0 ? "+" : ""}${bias.toFixed(2)} ${bias > 0.05 ? "over" : bias < -0.05 ? "under" : "level"}` : "—"}</dd></div>
+                      <div><dt>valid / answered</dt><dd>{agg.vN} / {answered}</dd></div>
+                      <div><dt>rushed (no credit)</dt><dd>{answered - agg.vN}</dd></div>
+                      <div><dt>concepts touched</dt><dd>{Object.keys(byConcept).length} / {SPIDER_CONCEPTS.length}</dd></div>
+                      <div><dt>thin evidence</dt><dd>{spiderAxes.filter((a) => (a.evidence ?? 0) < 2).length} concepts</dd></div>
+                    </dl>
+
+                    <p className="sx-sec" style={{ marginTop: 18 }}>Per concept</p>
+                    <div className="sx-ctable">
+                      {spiderAxes.map((a) => {
+                        const c = byConcept[a.label];
+                        return (
+                          <div key={a.label} className={`sx-crow${(a.evidence ?? 0) < 2 ? " thin" : ""}`}>
+                            <span className="c">{a.label}</span>
+                            <span className="m">{Math.round(a.value * 100)}%</span>
+                            <span className="e">{c ? `${c.correct}/${c.seen}` : "—"}</span>
+                            <span className="x">{c?.misc ? `⚑ ${c.misc}` : ""}</span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </div>
+                <p className="sx-note">
+                  These are the numbers your teacher sees. Nothing here changes your orbs
+                  or your rank — the two scores stay separate on purpose.
+                </p>
+              </div>
+            )}
 
             <div className="sx-rgrid">
               <div>

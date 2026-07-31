@@ -34,6 +34,37 @@ class Student(SQLModel, table=True):
     onboarded: bool = False
     created_at: datetime = Field(default_factory=_utcnow)
 
+    # --- teacher-side identity: the one deliberate exception to §10 ---------
+    # Everything else about a student is anonymous by construction. This field
+    # is not: a teacher who already knows the child types it in so a report can
+    # be discussed at a PTM. It is therefore fenced off —
+    #   * a teacher writes it, never the child and never the admin;
+    #   * it is excluded from every research export by column allow-list, and a
+    #     test asserts that (test_real_name_never_reaches_research_exports);
+    #   * clearing it back to "" is always available and destroys the link.
+    # Do not read this field into anything analytic. It exists for a
+    # conversation with a parent, and nothing else.
+    real_name: str = ""
+    name_set_at: Optional[datetime] = None
+
+
+class PracticeLog(SQLModel, table=True):
+    """A RANGE warm-up run — engagement only, never diagnostic.
+
+    RANGE sits outside the instrument: its content is deliberately absent from
+    the Q-matrix so practising cannot inflate what is about to be measured.
+    Logging it here records *time on task* so effort is visible to a teacher;
+    it must never feed a concept posterior, an XP total, or a score.
+    """
+
+    id: Optional[int] = Field(default=None, primary_key=True)
+    student_id: int = Field(foreign_key="student.id", index=True)
+    seconds: int = 0
+    hits: int = 0
+    misses: int = 0
+    best_streak: int = 0
+    at: datetime = Field(default_factory=_utcnow)
+
 
 class TeacherAccount(SQLModel, table=True):
     """Admin-issued teacher credential (plan §5.i)."""

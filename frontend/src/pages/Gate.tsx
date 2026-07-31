@@ -8,6 +8,7 @@ import {
   isTeacherIdShape,
   issueTeacherId,
   makeStudentCode,
+  studentFromCode,
 } from "../auth/ids";
 import type { TeacherKind } from "../auth/types";
 import { PixelBat } from "./PixelBat";
@@ -47,7 +48,9 @@ export function Gate() {
           <StudentFlow
             onBack={() => setStep("role")}
             onDone={(code, pin, returning) => {
-              setSession({ role: "student", student: makeStudentCode({ classLevel: "Class 7", section: code.split("·")[1]?.slice(-1) ?? "B", subject: "Maths", avatarId: 0 }) });
+              // The code the child typed *is* the identity. Minting a new one
+              // here handed every student the same KESTREL·xx account.
+              setSession({ role: "student", student: studentFromCode(code) });
               setLaunch({
                 title: returning ? "Welcome back" : "Code forged",
                 code: returning ? undefined : code,

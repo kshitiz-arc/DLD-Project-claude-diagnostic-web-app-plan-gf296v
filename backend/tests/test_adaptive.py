@@ -97,7 +97,7 @@ def test_stops_early_once_every_concept_has_converged():
 
 def test_shipped_budgets():
     """Pin the defaults a sitting actually runs with."""
-    assert SESSION_CAP == 30
+    assert SESSION_CAP == 35
     assert OPENING_HARD == 6
     # 10 strands x CONCEPT_CAP must be able to reach SESSION_CAP, or sittings
     # starve on the per-concept budget before they reach the cap.

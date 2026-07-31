@@ -81,6 +81,30 @@ export function makeStudentCode(params: {
   };
 }
 
+/** Rebuild a student identity from a code that already exists.
+ *
+ *  Sign-in must never go through ``makeStudentCode`` — that *mints* a code,
+ *  so a returning child would be handed a fresh identity (and always the same
+ *  one, since it reads ANIMALS[avatarId] and the caller passed 0 = KESTREL).
+ *  The code the child typed is the identity; this only parses it back out.
+ */
+export function studentFromCode(code: string, opts?: { classLevel?: string; subject?: string }): StudentCode {
+  const clean = code.trim().toUpperCase();
+  const animal = clean.split("·")[0] ?? "";
+  const tail = clean.split("·")[1] ?? "";
+  const idx = ANIMALS.indexOf(animal);
+  return {
+    code: clean,
+    pinSet: false,
+    classLevel: opts?.classLevel ?? "Class 7",
+    // Trailing letter is the section ("4B" -> "B"); numeric-only tails have none.
+    section: /[A-Z]$/.test(tail) ? tail.slice(-1) : "",
+    subject: opts?.subject ?? "Maths",
+    avatarId: idx >= 0 ? idx : 0,
+    createdAt: new Date().toISOString(),
+  };
+}
+
 export function isPinShape(pin: string): boolean {
   return /^\d{4}$/.test(pin);
 }

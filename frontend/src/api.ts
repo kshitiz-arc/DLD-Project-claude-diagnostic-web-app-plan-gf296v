@@ -5,6 +5,36 @@
 // (plan §9 — the lab may be air-gapped and the laptop may drop off the LAN).
 import type { DiagnosticCell, ResponseOption } from "./scoring";
 
+/** Time on task, split so effort and attainment stay separable. */
+export interface StudentHistory {
+  sessions_started: number; sessions_completed: number; items_answered: number;
+  range_runs: number; range_hours: number; test_hours: number; total_hours: number;
+  range_minutes: number; test_minutes: number;
+  practice_hits: number; best_streak: number;
+  first_seen: string; last_seen: string;
+  grind: {
+    title: string; tagline: string; tier: number;
+    next_title: string | null; hours_to_next: number | null; progress: number;
+  };
+}
+
+export interface ReportConcept {
+  concept: string; mastery: number; band: string;
+  items_seen: number; misconceptions: number; evidence: string;
+}
+
+/** The PTM payload — framed for a parent, not a researcher. */
+export interface StudentReport {
+  code: string; real_name: string; section: string; class_level: string; subject: string;
+  generated_at: string; history: StudentHistory;
+  attempted: number; valid: number;
+  cells: Record<DiagnosticCell, number>;
+  secure_share: number; sbar: number; calibration_bias: number;
+  concepts: ReportConcept[];
+  talking_points: { concept: string; axis: string; statement: string; note: string }[];
+  strengths: string[]; priorities: string[];
+}
+
 const BASE = (import.meta.env.VITE_API_BASE as string | undefined) ?? "";
 const TOKEN_KEY = "hyperion.teacherToken";
 
@@ -123,6 +153,21 @@ export const api = {
     get<{ scope: string[]; n_students: number; hotspots: Hotspot[] }>(
       `/api/console/hotspots?role=${role}&limit=${limit}&${role === "class" ? `section=${scope.section ?? "B"}` : `sections=${scope.sections ?? "A,B,C"}`}`),
   student: (code: string) => get<StudentDetail>(`/api/console/student/${encodeURIComponent(code)}`),
+
+  /** Activity history — sessions, RANGE vs test time, the grind title. */
+  history: (code: string) => get<StudentHistory>(`/api/student/${encodeURIComponent(code)}/history`),
+
+  /** Log a RANGE warm-up run. Engagement only; never touches the diagnostic. */
+  logPractice: (body: { code: string; seconds: number; hits: number; misses: number; best_streak: number }) =>
+    post<{ ok: boolean }>("/api/practice", body),
+
+  /** Attach the child's real name for a PTM. The only PII the system holds —
+   *  teacher-scoped, excluded from every export, and clearable with "". */
+  setStudentName: (code: string, real_name: string) =>
+    post<{ ok: boolean; code: string; real_name: string }>(
+      `/api/console/student/${encodeURIComponent(code)}/name`, { real_name }),
+
+  report: (code: string) => get<StudentReport>(`/api/console/report/${encodeURIComponent(code)}`),
 
   /** Download a scoped CSV export through the browser (plan §5.ii, §11). */
   exportUrl: (which: "responses" | "concept-state") => `${BASE}/api/export/${which}.csv`,

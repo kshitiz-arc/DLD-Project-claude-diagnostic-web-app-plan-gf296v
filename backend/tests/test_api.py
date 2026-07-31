@@ -335,6 +335,68 @@ def test_health_and_lan_page():
     assert "cdn" not in page.text.lower()  # offline-safe: no external asset
 
 
+def test_real_name_never_reaches_research_exports():
+    """The one PII field must stay inside the console.
+
+    A teacher may attach a child's name for a parents' evening (plan §10
+    exception). Every research surface has to stay anonymous regardless — the
+    CSV writers use column allow-lists, and this is what proves it. If this
+    test ever fails, the consent basis the data was collected under is broken,
+    not just a column.
+    """
+    code = client.post("/api/student/create", json={"section": "B", "avatar_id": 2}).json()["code"]
+    secret = "Ananya Raghunathan"
+    assert client.post(f"/api/console/student/{code}/name",
+                       json={"real_name": secret}, headers=ADMIN).status_code == 200
+
+    # It comes back on the console/report surfaces, which is the whole point...
+    assert client.get(f"/api/console/report/{code}", headers=ADMIN).json()["real_name"] == secret
+
+    # ...and appears in none of the research exports.
+    for path in ("/api/export/responses.csv", "/api/export/concept-state.csv",
+                 "/api/export/items.csv"):
+        body = client.get(path, headers=ADMIN).text
+        assert secret not in body, f"real name leaked into {path}"
+        assert "real_name" not in body.splitlines()[0], f"real_name column in {path}"
+
+
+def test_real_name_can_be_cleared():
+    """Erasure has to be one call — a name you cannot remove is a liability."""
+    code = client.post("/api/student/create", json={"section": "B", "avatar_id": 3}).json()["code"]
+    client.post(f"/api/console/student/{code}/name", json={"real_name": "Test Child"}, headers=ADMIN)
+    out = client.post(f"/api/console/student/{code}/name", json={"real_name": ""}, headers=ADMIN).json()
+    assert out["real_name"] == ""
+
+
+def test_practice_log_is_engagement_only():
+    """RANGE time must reach the history and nothing else.
+
+    It may never move a concept posterior or a diagnostic score — RANGE content
+    is deliberately outside the Q-matrix, so if it fed the model the diagnostic
+    would partly be measuring the warm-up (plan §7).
+    """
+    code = client.post("/api/student/create", json={"section": "B", "avatar_id": 4}).json()["code"]
+    before = client.get(f"/api/console/student/{code}", headers=ADMIN).json()
+
+    assert client.post("/api/practice", json={
+        "code": code, "seconds": 60, "hits": 30, "misses": 6, "best_streak": 9}).status_code == 200
+
+    hist = client.get(f"/api/student/{code}/history").json()
+    assert hist["range_runs"] == 1 and hist["range_minutes"] == 1.0
+    assert hist["total_hours"] >= hist["range_hours"] > 0
+
+    after = client.get(f"/api/console/student/{code}", headers=ADMIN).json()
+    assert after["fingerprint"] == before["fingerprint"], "RANGE moved the diagnostic"
+    assert after["sbar"] == before["sbar"]
+
+
+def test_practice_seconds_are_clamped():
+    """A tab left open overnight must not become a effort record."""
+    code = client.post("/api/student/create", json={"section": "B", "avatar_id": 5}).json()["code"]
+    client.post("/api/practice", json={"code": code, "seconds": 999_999, "hits": 1})
+    assert client.get(f"/api/student/{code}/history").json()["range_hours"] <= 1.0
+
+
 def test_projector_qr_is_scalable():
     """The QR must carry a viewBox, or the page cannot resize it.
 

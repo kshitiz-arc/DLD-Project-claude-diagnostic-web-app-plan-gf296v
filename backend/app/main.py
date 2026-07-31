@@ -30,7 +30,9 @@ from . import ids, lan
 from .adaptive import CONCEPT_CAP, SESSION_CAP, concept_convergence, select_next
 from .db import backup_db, engine, get_session, init_db
 from .itembank import STRANDS
-from .models import Concept, ConceptState, Item, Response, Session, Student, TeacherAccount
+from .models import (
+    Concept, ConceptState, Item, PracticeLog, Response, Session, Student, TeacherAccount,
+)
 from .schemas import (
     IssueTeacher, ItemOut, ResponseIn, ResponseOut, SessionNext, SessionStart,
     StudentCreate, StudentLogin, TeacherLogin,
@@ -609,6 +611,219 @@ def console_student(
         "reification_gap": {"n": twin.n, "mean": round(twin.mean, 3),
                             "ci95": [round(twin.ci95[0], 3), round(twin.ci95[1], 3)]},
     }
+
+
+# --- PTM identity + report (the §10 exception, fenced) ----------------------
+
+@app.post("/api/console/student/{code}/name")
+def set_student_name(
+    code: str,
+    body: dict,
+    acct: Optional[TeacherAccount] = Depends(teacher_from_token),
+    db: DbSession = Depends(get_session),
+):
+    """Attach a real name to a code, for a parents' evening only.
+
+    This is the single place the instrument holds PII, and it is deliberately
+    narrow: a teacher who already knows the child types it, scoped to their own
+    sections. It never reaches a research export (the CSV writers use column
+    allow-lists), and posting an empty string clears it again.
+    """
+    student = _find_student(db, code)
+    if not student:
+        raise HTTPException(404, "unknown student code")
+    if acct is not None and student.section not in set(_norm_sections(json.loads(acct.sections))):
+        raise HTTPException(403, "outside your scope")
+
+    name = str(body.get("real_name", "")).strip()[:80]
+    student.real_name = name
+    student.name_set_at = datetime.now(timezone.utc) if name else None
+    db.add(student)
+    db.commit()
+    return {"ok": True, "code": student.code, "real_name": student.real_name}
+
+
+@app.get("/api/console/report/{code}")
+def student_report(
+    code: str,
+    acct: Optional[TeacherAccount] = Depends(teacher_from_token),
+    db: DbSession = Depends(get_session),
+):
+    """Everything one PTM conversation needs, in one payload.
+
+    Deliberately framed for a parent rather than a researcher: concept mastery
+    in plain bands, the confident-wrong list as "worth a conversation", and
+    effort separated from attainment so a hard-working child is visible even
+    when mastery is still low.
+    """
+    student = _find_student(db, code)
+    if not student:
+        raise HTTPException(404, "unknown student code")
+    if acct is not None and student.section not in set(_norm_sections(json.loads(acct.sections))):
+        raise HTTPException(403, "outside your scope")
+
+    rows = list(db.exec(select(Response).where(Response.student_id == student.id)
+                        .order_by(Response.id)).all())
+    valid = [r for r in rows if r.rt_valid]
+    items = {i.id: i for i in db.exec(select(Item)).all()}
+    states = {s.strand: s for s in db.exec(
+        select(ConceptState).where(ConceptState.student_id == student.id)).all()}
+    n = max(1, len(valid))
+
+    def band(m: float) -> str:
+        if m >= 0.80: return "Secure"
+        if m >= 0.62: return "Developing"
+        if m >= 0.45: return "Needs attention"
+        return "Priority"
+
+    concepts = []
+    for c in CONCEPTS:
+        st = states.get(c)
+        m = st.mastery_mean if st else 0.5
+        seen = sum(1 for r in valid if r.strand == c)
+        concepts.append({
+            "concept": c, "mastery": round(m, 3), "band": band(m), "items_seen": seen,
+            "misconceptions": sum(1 for r in valid
+                                  if r.strand == c and r.diagnostic_cell == "MISCONCEPTION"),
+            "evidence": "thin" if seen < 2 else "adequate",
+        })
+
+    talking_points = [
+        {"concept": r.strand, "axis": r.axis,
+         "statement": items[r.item_id].statement_text if r.item_id in items else "",
+         "note": items[r.item_id].note if r.item_id in items else ""}
+        for r in valid if r.diagnostic_cell == "MISCONCEPTION"
+    ]
+    # One row per concept is enough for a conversation; more becomes a list to
+    # get through rather than a thing to discuss.
+    seen_c: set = set()
+    top_points = []
+    for p in talking_points:
+        if p["concept"] not in seen_c:
+            seen_c.add(p["concept"])
+            top_points.append(p)
+
+    cells = {c: sum(1 for r in valid if r.diagnostic_cell == c) for c in CELLS}
+    return {
+        "code": student.code,
+        "real_name": student.real_name,
+        "section": student.section,
+        "class_level": student.class_level,
+        "subject": student.subject,
+        "generated_at": datetime.now(timezone.utc).isoformat(),
+        "history": student_history(db, student),
+        "attempted": len(rows), "valid": len(valid),
+        "cells": cells,
+        "secure_share": round(cells.get("SECURE", 0) / n, 3),
+        "sbar": round(sum(r.brier_reward for r in valid) / n, 3),
+        "calibration_bias": round(
+            sum((1 if r.confidence_high else 0) - (1 if r.direction_correct else 0)
+                for r in valid) / n, 3),
+        "concepts": concepts,
+        "talking_points": top_points,
+        "strengths": [c["concept"] for c in sorted(
+            concepts, key=lambda x: -x["mastery"])[:3] if c["mastery"] >= 0.62],
+        "priorities": [c["concept"] for c in sorted(
+            concepts, key=lambda x: x["mastery"])[:3] if c["mastery"] < 0.62],
+    }
+
+
+# --- activity history (plan §8 game layer, never diagnostic) ----------------
+
+# Time-on-task ladder. Purely a title for the child: it reads off hours spent,
+# not off anything measured, so climbing it cannot be confused with mastery.
+# Thresholds are set against what a term of real use looks like: one sitting
+# is roughly 6 minutes of answering, so an hour is already a committed child.
+# A ladder topping out at 12h would leave every real student on rung one.
+GRIND_RANKS = [
+    (0.0, "Human", "no contract signed yet"),
+    (0.25, "Hunter", "took the job"),
+    (0.60, "Devil Hunter", "shop is open"),
+    (1.20, "Nephilim", "half a bloodline"),
+    (2.50, "Son of Sparda", "the name carries weight"),
+    (5.00, "Legendary Devil Hunter", "smokin' sick style"),
+]
+
+
+def grind_rank(hours: float) -> dict:
+    """DMC-flavoured title for total time on task, with progress to the next."""
+    idx = 0
+    for i, (need, _, _) in enumerate(GRIND_RANKS):
+        if hours >= need:
+            idx = i
+    need, title, tag = GRIND_RANKS[idx]
+    nxt = GRIND_RANKS[idx + 1] if idx + 1 < len(GRIND_RANKS) else None
+    return {
+        "title": title, "tagline": tag, "tier": idx,
+        "next_title": nxt[1] if nxt else None,
+        "hours_to_next": round(max(0.0, nxt[0] - hours), 2) if nxt else None,
+        "progress": round(min(1.0, (hours - need) / (nxt[0] - need)), 3) if nxt else 1.0,
+    }
+
+
+def student_history(db: DbSession, student: Student) -> dict:
+    """Sessions, time split between RANGE and the test, and the grind total.
+
+    Test time is summed from the event store's own response times rather than
+    session wall-clock, because wall-clock counts a child who walked away.
+    """
+    sittings = list(db.exec(select(Session).where(Session.student_id == student.id)).all())
+    rows = list(db.exec(select(Response).where(Response.student_id == student.id)).all())
+    practice = list(db.exec(select(PracticeLog).where(PracticeLog.student_id == student.id)).all())
+
+    test_s = sum(r.response_time_ms for r in rows) / 1000.0
+    range_s = float(sum(p.seconds for p in practice))
+    total_h = (test_s + range_s) / 3600.0
+
+    finished = [s for s in sittings if s.stop_reason]
+    return {
+        "sessions_started": len(sittings),
+        "sessions_completed": len(finished),
+        "items_answered": len(rows),
+        "range_runs": len(practice),
+        "range_hours": round(range_s / 3600.0, 2),
+        "test_hours": round(test_s / 3600.0, 2),
+        "total_hours": round(total_h, 2),
+        "range_minutes": round(range_s / 60.0, 1),
+        "test_minutes": round(test_s / 60.0, 1),
+        "practice_hits": sum(p.hits for p in practice),
+        "best_streak": max((p.best_streak for p in practice), default=0),
+        "first_seen": min((s.started_at for s in sittings), default=student.created_at).isoformat(),
+        "last_seen": max((s.started_at for s in sittings), default=student.created_at).isoformat(),
+        "grind": grind_rank(total_h),
+    }
+
+
+@app.post("/api/practice")
+def log_practice(body: dict, db: DbSession = Depends(get_session)):
+    """Record a RANGE warm-up run — engagement only.
+
+    Nothing here touches a concept posterior, XP, or a diagnostic score; RANGE
+    content is deliberately outside the Q-matrix. Seconds are clamped so a
+    stuck tab cannot inflate a child's effort total.
+    """
+    student = _find_student(db, str(body.get("code", "")))
+    if not student:
+        raise HTTPException(404, "unknown student code")
+    row = PracticeLog(
+        student_id=student.id,
+        seconds=max(0, min(int(body.get("seconds", 0) or 0), 3600)),
+        hits=max(0, int(body.get("hits", 0) or 0)),
+        misses=max(0, int(body.get("misses", 0) or 0)),
+        best_streak=max(0, int(body.get("best_streak", 0) or 0)),
+    )
+    db.add(row)
+    db.commit()
+    return {"ok": True}
+
+
+@app.get("/api/student/{code}/history")
+def student_history_endpoint(code: str, db: DbSession = Depends(get_session)):
+    """The child's own record — what the results screen shows them."""
+    student = _find_student(db, code)
+    if not student:
+        raise HTTPException(404, "unknown student code")
+    return student_history(db, student)
 
 
 # --- research exports (plan §5.ii, §11) -------------------------------------
