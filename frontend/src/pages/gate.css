@@ -1,0 +1,130 @@
+/* Gate screen — the entry terminal. Three provisioning flows (plan §5.i, §10)
+   behind one holo panel. First impression of the whole instrument, so it
+   carries the brand weight; everything past it gets quieter. */
+
+.gate { max-width: 560px; margin: 0 auto; padding: clamp(20px,5vh,40px) clamp(12px,4vw,16px) 50px; }
+
+.ghdr { text-align: center; margin-bottom: clamp(18px,3vh,26px); }
+.glogo { font-family: var(--disp); font-size: clamp(32px,8vw,44px); line-height: 1; color: var(--bone);
+  letter-spacing: .14em; text-transform: uppercase;
+  text-shadow: 0 0 30px color-mix(in oklab, var(--cyan) 55%, transparent); }
+.glogo b { color: var(--cyan); }
+.gsub { font-size: 10.5px; letter-spacing: .24em; text-transform: uppercase; color: var(--muted); margin-top: 9px; }
+
+.gpanel { position: relative; border: 1px solid var(--line); border-radius: 5px;
+  background: var(--panel); backdrop-filter: blur(12px) saturate(1.15);
+  box-shadow: var(--shadow); padding: clamp(18px,4vw,26px); overflow: hidden; }
+/* the light catching the top edge — the tell that this is a holo surface */
+.gpanel::before { content: ""; position: absolute; left: 0; right: 0; top: 0; height: 1px; pointer-events: none;
+  background: linear-gradient(90deg, transparent, color-mix(in oklab, var(--cyan) 70%, transparent), transparent); }
+.gpanel::after { content: ""; position: absolute; inset: 0; pointer-events: none; background: var(--sheen); }
+.gpanel > * { position: relative; z-index: 1; }
+
+.eyebrow { font-size: 10.5px; letter-spacing: .2em; text-transform: uppercase; color: var(--cyan); margin-bottom: 7px; }
+.gt { margin: 0 0 6px; font-family: var(--disp); font-size: clamp(22px,5.5vw,28px); letter-spacing: .09em;
+  text-transform: uppercase; }
+.gd { margin: 0 0 20px; font-size: 13.5px; line-height: 1.6; color: var(--muted); max-width: 48ch; }
+
+/* ── role cards ────────────────────────────────────────────────────────── */
+.roles { display: grid; gap: 12px; }
+.rc { position: relative; display: flex; align-items: center; gap: 14px; cursor: pointer; text-align: left;
+  color: var(--text); border: 1px solid var(--line); border-radius: 4px; padding: 17px; overflow: hidden;
+  background: var(--panel2); transition: transform .16s var(--ease), border-color .18s, box-shadow .18s; }
+.rc::before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 3px; background: var(--rcc);
+  box-shadow: 0 0 14px var(--rcc); }
+.rc::after { content: ""; position: absolute; inset: 0; pointer-events: none; opacity: 0; z-index: 0;
+  transition: opacity .18s;
+  background: radial-gradient(120% 130% at 0% 50%, color-mix(in oklab, var(--rcc) 16%, transparent), transparent 62%); }
+.rc:hover { transform: translateX(4px); border-color: color-mix(in oklab, var(--rcc) 55%, var(--line)); }
+.rc:hover::after { opacity: 1; }
+/* the label sits above the hover wash, so the glow never tints the text */
+.rc .tx, .rc .go { position: relative; z-index: 1; }
+.rc .tx b { font-family: var(--disp); font-size: 19px; display: block; letter-spacing: .08em; text-transform: uppercase; }
+.rc .tx span { font-size: 12px; color: var(--muted); }
+.rc .go { margin-left: auto; color: var(--rcc); font-size: 26px; line-height: 1; }
+.rc.student { --rcc: var(--cyan); } .rc.teacher { --rcc: var(--teach); } .rc.admin { --rcc: var(--violet); }
+
+/* ── controls ──────────────────────────────────────────────────────────── */
+.back { background: none; border: 0; color: var(--muted); cursor: pointer; font-size: 12px; padding: 0;
+  margin-bottom: 14px; transition: color .16s; }
+.back:hover { color: var(--cyan); }
+.tabs { display: flex; gap: 5px; padding: 5px; border: 1px solid var(--line); background: var(--panel2);
+  margin-bottom: 18px; border-radius: 4px; }
+.tabs button { flex: 1; border: 0; background: transparent; color: var(--muted); cursor: pointer; font-weight: 600;
+  font-size: 12.5px; padding: 10px; border-radius: 3px; transition: .18s var(--ease); }
+.tabs button:hover { color: var(--text); }
+.tabs button[aria-selected="true"] { background: var(--steel); color: var(--text);
+  box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--cyan) 30%, transparent); }
+
+.field { margin-bottom: 16px; }
+.field label { display: block; font-size: 10.5px; letter-spacing: .14em; text-transform: uppercase;
+  color: var(--muted); margin-bottom: 8px; }
+.in { width: 100%; background: var(--panel2); border: 1px solid var(--line); color: var(--text);
+  font-family: var(--body); font-size: 14px; padding: 12px 13px; outline: none; border-radius: 3px;
+  transition: border-color .18s, box-shadow .18s; }
+.in:focus { border-color: var(--cyan); box-shadow: 0 0 0 3px color-mix(in oklab, var(--cyan) 18%, transparent); }
+.in.mono { font-family: var(--mono); letter-spacing: .08em; }
+
+.opts { display: grid; grid-template-columns: repeat(auto-fit, minmax(70px, 1fr)); gap: 8px; }
+.pick { border: 1px solid var(--line); background: var(--panel2); color: var(--text); cursor: pointer;
+  padding: 12px 6px; text-align: center; font-family: var(--disp); font-size: 15px; letter-spacing: .06em;
+  border-radius: 3px; transition: .18s var(--ease); }
+.pick:hover { border-color: var(--edge); color: var(--cyan); }
+.pick[aria-pressed="true"] { background: linear-gradient(150deg, var(--cyan), var(--violet)); color: var(--void);
+  border-color: transparent; font-weight: 700;
+  box-shadow: 0 0 20px -6px color-mix(in oklab, var(--cyan) 80%, transparent); }
+.avatars { display: flex; gap: 8px; flex-wrap: wrap; }
+.avp { width: 52px; height: 52px; border: 1px solid var(--line); cursor: pointer; display: grid; place-items: center;
+  color: var(--void); font-family: var(--disp); font-size: 15px; letter-spacing: .04em; border-radius: 4px;
+  transition: transform .16s var(--ease); }
+.avp:hover { transform: translateY(-2px); }
+.avp[aria-pressed="true"] { outline: 2px solid var(--cyan); outline-offset: 2px;
+  box-shadow: 0 0 22px -4px color-mix(in oklab, var(--cyan) 85%, transparent); }
+
+.btn { width: 100%; cursor: pointer; border: 1px solid transparent; font-family: var(--disp);
+  text-transform: uppercase; letter-spacing: .12em; font-size: 17px; padding: 14px; margin-top: 8px;
+  border-radius: 3px; font-weight: 700; background: linear-gradient(100deg, var(--cyan), var(--violet));
+  color: var(--void); box-shadow: 0 0 26px -8px color-mix(in oklab, var(--cyan) 80%, transparent);
+  transition: .18s var(--ease); }
+.btn:hover { filter: brightness(1.12); box-shadow: 0 0 34px -6px color-mix(in oklab, var(--cyan) 90%, transparent); }
+.btn.ghost { background: var(--panel2); color: var(--text); border-color: var(--line); box-shadow: none; }
+.btn.ghost:hover { border-color: var(--edge); color: var(--cyan); filter: none; }
+.hint { font-size: 11.5px; color: var(--faint); margin-top: 12px; line-height: 1.5; }
+.err { color: var(--misc); font-size: 12px; margin-top: 8px; min-height: 16px; }
+
+/* ── the issued code ───────────────────────────────────────────────────── */
+.codecard { position: relative; text-align: center; border: 1px dashed color-mix(in oklab, var(--cyan) 50%, var(--line));
+  background: color-mix(in oklab, var(--cyan) 8%, var(--panel2)); padding: 22px; margin: 6px 0 14px;
+  border-radius: 4px; overflow: hidden; }
+.ck { font-size: 10.5px; letter-spacing: .18em; text-transform: uppercase; color: var(--muted); }
+/* The code is the one thing a child must carry away — it has to fit and be
+   selectable, not clipped by the card at small widths. */
+.ccode { font-family: var(--disp); font-size: clamp(24px,7.5vw,36px); color: var(--cyan);
+  margin: 9px 0; overflow-wrap: anywhere; user-select: all; letter-spacing: .06em;
+  text-shadow: 0 0 28px color-mix(in oklab, var(--cyan) 55%, transparent); }
+.cpin { font-family: var(--mono); font-size: 14px; }
+.cpin b { color: var(--gold); letter-spacing: .2em; }
+.glaunch { text-align: center; }
+
+/* ── admin: issued teacher IDs ─────────────────────────────────────────── */
+.issued { margin-top: 16px; border-top: 1px solid var(--line2); padding-top: 14px; }
+.ih { font-size: 10px; letter-spacing: .16em; text-transform: uppercase; color: var(--muted); margin-bottom: 10px; }
+.ih span { color: var(--faint); }
+.tid { display: flex; align-items: center; gap: 10px; padding: 9px 0; border-top: 1px solid var(--line2); }
+.tid:first-of-type { border-top: 0; }
+.tid .badge { font-size: 9px; letter-spacing: .08em; text-transform: uppercase; padding: 3px 8px;
+  border: 1px solid var(--bc); color: var(--bc); border-radius: 999px; }
+.tid.class { --bc: var(--gap); } .tid.subject { --bc: var(--teach); }
+.tid .id { font-family: var(--mono); font-size: 13px; flex: 1; min-width: 0; }
+.tid .tpin { font-family: var(--mono); font-size: 12.5px; color: var(--gold); }
+.tid .scope { font-size: 11.5px; color: var(--faint); }
+.empty { font-size: 12.5px; color: var(--faint); font-style: italic; }
+/* An issued row is badge + id + scope + PIN; that never fits one phone line. */
+@media (max-width: 520px) {
+  .tid { flex-wrap: wrap; gap: 6px 10px; }
+  .tid .id { flex-basis: calc(100% - 70px); }
+  .tid .scope { flex-basis: 100%; }
+}
+
+.gfoot { margin-top: 22px; font-size: 11px; color: var(--faint); text-align: center; line-height: 1.7;
+  max-width: 52ch; margin-inline: auto; }

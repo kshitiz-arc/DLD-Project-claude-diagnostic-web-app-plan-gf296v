@@ -1,0 +1,341 @@
+/* Student diagnostic HUD — holographic tactical interface.
+
+   Layout principle is unchanged and load-bearing: game chrome lives at the
+   edges, measurement owns the centre. During a question the screen shows the
+   statement and the certainty spectrum and nothing else; progression and the
+   leaderboard appear only on the results screen, because in-task they bias
+   behaviour (plan §8 validity risk).
+
+   All classes prefixed sx-. Tokens come from tokens.css. */
+
+.sx-root { position: relative; z-index: 1; max-width: 1180px; margin: 0 auto;
+  padding: 14px clamp(12px,3vw,28px) 28px; min-height: 100vh; min-height: 100dvh;
+  display: flex; flex-direction: column; }
+
+/* The field: a slow holographic sweep over the page grid. Deliberately low
+   contrast — it must never compete with the statement. */
+.sx-grain { position: fixed; inset: 0; z-index: 0; pointer-events: none; overflow: hidden;
+  background:
+    repeating-linear-gradient(0deg, transparent 0 3px, color-mix(in oklab, var(--cyan) 4%, transparent) 3px 4px);
+  opacity: .5; }
+.sx-grain::after {
+  content: ""; position: absolute; left: 0; right: 0; height: 45vh;
+  background: linear-gradient(180deg, transparent, color-mix(in oklab, var(--cyan) 7%, transparent), transparent);
+  animation: hxSweep 9s linear infinite; }
+:root[data-theme="light"] .sx-grain { opacity: .3; }
+
+.sx-fx { position: fixed; inset: 0; z-index: 60; pointer-events: none; }
+.sx-dmg { position: fixed; inset: 0; z-index: 55; pointer-events: none; opacity: 0;
+  box-shadow: inset 0 0 220px color-mix(in oklab, var(--misc) 65%, transparent); }
+.sx-dmg.on { animation: sxDmg .5s ease-out; }
+@keyframes sxDmg { 0%{opacity:0} 12%{opacity:1} 100%{opacity:0} }
+
+/* ── top bar: identity + controls only ───────────────────────────────── */
+.sx-top { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 20px; }
+.sx-brand { display: flex; align-items: center; gap: 10px; }
+.sx-brand svg { width: 26px; height: 26px; color: var(--cyan);
+  filter: drop-shadow(0 0 9px color-mix(in oklab, var(--cyan) 70%, transparent)); }
+.sx-logo { font-family: var(--disp); font-size: 25px; line-height: 1; letter-spacing: .12em;
+  color: var(--bone); text-transform: uppercase;
+  text-shadow: 0 0 20px color-mix(in oklab, var(--cyan) 55%, transparent); }
+.sx-logo b { color: var(--cyan); font-weight: 700; }
+.sx-subttl { font-size: 9.5px; color: var(--faint); text-transform: uppercase; letter-spacing: .24em; margin-top: 3px; }
+.sx-spacer { margin-left: auto; }
+
+.sx-tag { display: flex; align-items: center; gap: 9px; padding: 5px 13px 5px 5px;
+  background: var(--panel); border: 1px solid var(--line); border-radius: 3px;
+  box-shadow: inset 0 1px 0 color-mix(in oklab, var(--cyan) 14%, transparent); }
+.sx-av { width: 30px; height: 30px; display: grid; place-items: center; color: var(--void);
+  font-family: var(--disp); font-size: 12px; letter-spacing: .04em; border-radius: 3px;
+  background: linear-gradient(150deg, var(--cyan), var(--violet));
+  box-shadow: 0 0 14px color-mix(in oklab, var(--cyan) 45%, transparent); }
+.sx-who b { font-size: 12.5px; letter-spacing: .04em; }
+.sx-who span { display: block; font-size: 9.5px; color: var(--muted); letter-spacing: .1em; }
+
+.sx-toggle { display: inline-flex; align-items: center; gap: 8px; cursor: pointer; padding: 7px 12px;
+  border: 1px solid var(--line); background: var(--panel2); font-size: 10px; color: var(--muted);
+  text-transform: uppercase; letter-spacing: .14em; border-radius: 3px; transition: .18s var(--ease); }
+.sx-toggle:hover { color: var(--text); border-color: var(--edge); }
+.sx-dot { width: 26px; height: 13px; background: var(--steel); border-radius: 999px; position: relative;
+  box-shadow: inset 0 0 0 1px var(--line); }
+.sx-dot::after { content:""; position: absolute; top: 2px; left: 2px; width: 9px; height: 9px;
+  border-radius: 50%; background: var(--faint); transition: .25s var(--ease); }
+.sx-toggle.on { color: var(--cyan); border-color: color-mix(in oklab, var(--cyan) 45%, transparent); }
+.sx-toggle.on .sx-dot { background: color-mix(in oklab, var(--cyan) 30%, transparent); }
+.sx-toggle.on .sx-dot::after { transform: translateX(13px); background: var(--cyan);
+  box-shadow: 0 0 10px var(--cyan); }
+.sx-ibtn { width: 34px; height: 34px; border: 1px solid var(--line); background: var(--panel2);
+  color: var(--muted); cursor: pointer; font-size: 15px; border-radius: 3px; transition: .18s var(--ease); }
+.sx-ibtn:hover { color: var(--cyan); border-color: var(--edge); }
+
+/* ── the arena: one column, the question owns it ─────────────────────── */
+/* min-height:0 lets the stage shrink instead of pushing the bottom strip off
+   a short laptop screen; the padding keeps the question off the chrome. */
+.sx-stage { flex: 1; min-height: 0; display: flex; flex-direction: column;
+  justify-content: center; padding: clamp(4px,1.5vh,18px) 0; }
+.sx-hud { position: relative; }
+.sx-hud.shake { animation: sxShake .34s cubic-bezier(.36,.07,.19,.97) both; }
+@keyframes sxShake { 10%,90%{transform:translate(-1px,0)} 30%,50%,70%{transform:translate(-6px,1px)} 40%,60%{transform:translate(6px,-1px)} }
+
+/* context line — which concept, which lens, how far in */
+.sx-ctx { display: flex; align-items: center; gap: 11px; flex-wrap: wrap;
+  margin-bottom: clamp(14px,2.6vh,22px); padding-bottom: 12px; border-bottom: 1px solid var(--line2); }
+.sx-ctx-ic { width: 34px; height: 34px; flex: none; display: grid; place-items: center; color: var(--cyan);
+  border: 1px solid color-mix(in oklab, var(--cyan) 35%, var(--line)); border-radius: 3px;
+  background: color-mix(in oklab, var(--cyan) 9%, var(--steel));
+  box-shadow: 0 0 16px -4px color-mix(in oklab, var(--cyan) 60%, transparent); }
+.sx-ctx-ic svg { width: 18px; height: 18px; }
+.sx-ctx-txt { min-width: 0; }
+.sx-ctx-strand { font-family: var(--disp); font-size: 17px; letter-spacing: .1em; line-height: 1.1;
+  text-transform: uppercase; }
+.sx-ctx-axis { font-size: 10px; color: var(--faint); text-transform: uppercase; letter-spacing: .16em; margin-top: 2px; }
+.sx-probe { font-size: 10px; letter-spacing: .14em; text-transform: uppercase; color: var(--violet);
+  border: 1px solid color-mix(in oklab, var(--violet) 50%, transparent); padding: 4px 9px; border-radius: 3px;
+  background: color-mix(in oklab, var(--violet) 12%, transparent);
+  animation: hxPulseGlow 2s ease-in-out infinite; }
+.sx-count { margin-left: auto; font-family: var(--mono); font-size: 12px; color: var(--faint);
+  font-variant-numeric: tabular-nums; letter-spacing: .06em; }
+.sx-count b { color: var(--cyan); font-size: 16px; }
+
+/* The statement is the hero, but it has to *fit*. Bank statements run from
+   ~20 to ~90 characters, so the type scales on viewport height as well as
+   width — a long statement on a short laptop screen must not push the answer
+   buttons out of reach. ~34ch keeps a long sentence to three lines while
+   staying inside a comfortable reading measure. */
+.sx-statement { position: relative; font-size: clamp(20px, min(3.2vw, 3.4vh), 38px); line-height: 1.28;
+  letter-spacing: -.01em; font-weight: 650; text-wrap: balance;
+  margin: 0 0 clamp(16px,3vh,30px); max-width: 30ch; padding-left: clamp(12px,2vw,20px);
+  border-left: 2px solid color-mix(in oklab, var(--cyan) 55%, transparent); }
+.sx-statement::before {
+  content: ""; position: absolute; left: -2px; top: 0; width: 2px; height: 28px;
+  background: var(--cyan); box-shadow: 0 0 12px var(--cyan); }
+@media (min-width: 700px) { .sx-statement { max-width: 34ch; } }
+
+/* ── certainty spectrum: one connected track, not four cards ─────────── */
+.sx-spectrum { display: grid; grid-template-columns: repeat(4,1fr); align-items: end; gap: 0;
+  border: 1px solid var(--line); border-radius: 4px; overflow: hidden;
+  background: var(--panel); box-shadow: var(--shadow); }
+.sx-opt { position: relative; cursor: pointer; border: 0; border-right: 1px solid var(--line2);
+  background: transparent; color: var(--text); padding: 15px 10px 14px; text-align: center;
+  display: flex; flex-direction: column; gap: 8px; align-items: center;
+  transition: background .18s var(--ease), transform .12s var(--ease); }
+.sx-opt:last-child { border-right: 0; }
+/* outer options sit taller: they are further from p̂ = 0.5 */
+.sx-opt.far { padding-top: 27px; }
+/* the charge line under each option — brightens on hover, the "arming" cue */
+.sx-opt::after { content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 3px;
+  background: var(--optc); opacity: .3; transition: opacity .18s, height .18s, box-shadow .18s; }
+.sx-opt:hover { background: color-mix(in oklab, var(--optc) 14%, transparent); }
+.sx-opt:hover::after { opacity: 1; height: 5px; box-shadow: 0 0 16px var(--optc); }
+.sx-opt:active { transform: translateY(1px); }
+.sx-opt:focus-visible { outline: 2px solid var(--optc); outline-offset: -3px; }
+.sx-opt:disabled { cursor: default; }
+.sx-opt svg { width: 26px; height: 17px; color: var(--optc); opacity: .95;
+  filter: drop-shadow(0 0 7px color-mix(in oklab, var(--optc) 55%, transparent)); }
+.sx-opt .k { font-family: var(--disp); font-size: 15px; color: var(--optc); text-transform: uppercase;
+  letter-spacing: .07em; line-height: 1.05; }
+.sx-opt .sub { font-size: 10px; letter-spacing: .16em; text-transform: uppercase; color: var(--faint); }
+.sx-opt .key { position: absolute; top: 7px; left: 9px; font-family: var(--mono); font-size: 10px;
+  color: var(--faint); opacity: .8; }
+.sx-opt.f { --optc: var(--gap); } .sx-opt.t { --optc: var(--secure); }
+.sx-opt.picked { background: color-mix(in oklab, var(--optc) 20%, transparent); }
+.sx-opt.picked::after { opacity: 1; height: 5px; box-shadow: 0 0 16px var(--optc); }
+
+/* Narrow screens: shrink before folding, then fold to 2x2. Reading order stays
+   left-to-right, top-to-bottom, so the false→true continuum survives the fold. */
+@media (max-width: 620px) {
+  .sx-opt { padding: 12px 6px 11px; gap: 5px; }
+  .sx-opt.far { padding-top: 19px; }
+  .sx-opt svg { width: 21px; height: 14px; }
+  .sx-opt .k { font-size: 13px; letter-spacing: .04em; }
+  .sx-opt .sub { font-size: 9px; letter-spacing: .1em; }
+}
+@media (max-width: 430px) {
+  .sx-spectrum { grid-template-columns: repeat(2,1fr); }
+  .sx-opt { border-bottom: 1px solid var(--line2); }
+  .sx-opt:nth-child(2n) { border-right: 0; }
+  .sx-opt:nth-child(n+3) { border-bottom: 0; }
+  .sx-opt.far { padding-top: 12px; }  /* the height cue can't survive a fold */
+}
+
+/* the continuum legend — says what the spectrum means, once */
+.sx-scale { display: flex; justify-content: space-between; align-items: center; margin-top: 10px;
+  font-size: 10px; letter-spacing: .18em; text-transform: uppercase; color: var(--faint); }
+.sx-scale .mid { color: color-mix(in oklab, var(--faint) 70%, transparent); letter-spacing: .12em; }
+@media (max-width: 430px) { .sx-scale .mid { display: none; } }
+
+/* read-time gate — a charging hairline, not a component */
+.sx-rt { margin-top: 14px; height: 2px; background: var(--line2); overflow: hidden; border-radius: 2px; }
+.sx-rt i { display: block; height: 100%; width: 0;
+  background: linear-gradient(90deg, color-mix(in oklab, var(--teach) 30%, transparent), var(--teach));
+  box-shadow: 0 0 10px color-mix(in oklab, var(--teach) 60%, transparent); }
+.sx-rt.ready i { background: var(--secure); box-shadow: 0 0 10px color-mix(in oklab, var(--secure) 60%, transparent); }
+
+/* ── verdict slam ─────────────────────────────────────────────────────── */
+.sx-verdict { position: fixed; inset: 0; z-index: 40; display: flex; align-items: center; justify-content: center; overflow: hidden; }
+.sx-scrim { position: absolute; inset: 0; background: color-mix(in oklab, var(--void) 68%, transparent);
+  backdrop-filter: blur(5px) saturate(1.2); }
+.sx-vslash { position: relative; width: 160%; padding: 28px 0; text-align: center;
+  animation: sxSlash 1.2s cubic-bezier(.16,.9,.24,1) both;
+  background: linear-gradient(90deg, transparent, color-mix(in oklab, var(--cell) 26%, var(--panel)) 12% 88%, transparent);
+  border-top: 2px solid var(--cell); border-bottom: 2px solid var(--cell);
+  box-shadow: 0 0 70px color-mix(in oklab, var(--cell) 45%, transparent); }
+@keyframes sxSlash { 0%{transform:translateX(-130%)} 20%{transform:translateX(0)} 80%{transform:translateX(0)} 100%{transform:translateX(130%)} }
+.sx-vslash .ic { width: 52px; height: 52px; margin: 0 auto 8px; color: var(--cell);
+  filter: drop-shadow(0 0 16px var(--cell)); }
+.sx-vbig { font-family: var(--disp); font-size: clamp(38px,7vw,72px); color: var(--cell); line-height: .9;
+  text-transform: uppercase; letter-spacing: .06em;
+  text-shadow: 0 0 46px color-mix(in oklab, var(--cell) 65%, transparent),
+               2px 0 0 color-mix(in oklab, var(--violet) 55%, transparent),
+               -2px 0 0 color-mix(in oklab, var(--cyan) 55%, transparent); }
+.sx-vsub { font-size: 12px; letter-spacing: .2em; text-transform: uppercase; color: var(--bone); margin-top: 8px; }
+.sx-vdiag { margin-top: 8px; font-family: var(--mono); font-size: 12px; color: var(--muted); }
+.sx-vdiag b { color: var(--cell); }
+
+/* ── bottom strip: every piece of game state, one row ─────────────────── */
+.sx-strip { display: flex; align-items: center; gap: clamp(12px,2.4vw,26px); flex-wrap: wrap;
+  margin-top: auto; padding-top: 15px; border-top: 1px solid var(--line2); }
+.sx-rank { display: flex; align-items: center; gap: 11px; }
+.sx-rankltr { font-family: var(--disp); font-size: 42px; line-height: .82; color: var(--rank);
+  letter-spacing: .02em; text-shadow: 0 0 26px color-mix(in oklab, var(--rank) 75%, transparent);
+  min-width: 36px; }
+.sx-rankltr.pop { animation: sxSlam .38s cubic-bezier(.2,1.4,.3,1) both; }
+@keyframes sxSlam { 0%{transform:scale(1.9); opacity:0} 60%{transform:scale(.9)} 100%{transform:scale(1)} }
+.sx-rankmeta { min-width: 122px; }
+.sx-rankword { font-family: var(--disp); font-size: 12px; letter-spacing: .14em; color: var(--bone);
+  line-height: 1; text-transform: uppercase; }
+/* the style gauge reads as a charging power cell */
+.sx-gauge { height: 6px; background: var(--steel); border-radius: 2px; margin-top: 6px;
+  position: relative; overflow: hidden; box-shadow: inset 0 0 0 1px var(--line2); }
+.sx-gfill { position: absolute; inset: 0 auto 0 0; width: 40%; background: var(--rank);
+  box-shadow: 0 0 14px var(--rank); transition: width .12s linear; }
+.sx-gauge::after { content: ""; position: absolute; inset: 0; pointer-events: none;
+  background: repeating-linear-gradient(90deg, transparent 0 8px, color-mix(in oklab, var(--void) 60%, transparent) 8px 10px); }
+.sx-combo { font-family: var(--disp); font-size: 23px; color: var(--gold); line-height: 1; letter-spacing: .04em;
+  text-shadow: 0 0 18px color-mix(in oklab, var(--gold) 55%, transparent); }
+.sx-combo small { font-size: 9.5px; color: var(--faint); letter-spacing: .12em; margin-left: 3px; }
+.sx-combo.zero { opacity: .25; text-shadow: none; }
+.sx-combo.bump { animation: sxBump .25s ease-out; }
+@keyframes sxBump { 0%{transform:scale(1.35)} 100%{transform:scale(1)} }
+.sx-dt { flex: 1; min-width: 120px; max-width: 240px; }
+.sx-dtlab { font-size: 10px; letter-spacing: .14em; text-transform: uppercase; color: var(--faint); margin-bottom: 5px; }
+.sx-dtbar { height: 8px; background: var(--steel); border-radius: 2px; position: relative; overflow: hidden;
+  box-shadow: inset 0 0 0 1px var(--line2); }
+.sx-dtfill { position: absolute; inset: 0 auto 0 0; width: 0;
+  background: linear-gradient(90deg, var(--violet), var(--cyan));
+  box-shadow: 0 0 16px color-mix(in oklab, var(--cyan) 70%, transparent);
+  transition: width .5s var(--ease); }
+.sx-dtbar.full .sx-dtfill { animation: hxPulseGlow 1s infinite; }
+.sx-orbs { display: flex; align-items: center; gap: 9px; margin-left: auto; }
+.sx-orbs svg { width: 21px; height: 21px; color: var(--cyan); filter: drop-shadow(0 0 9px var(--cyan)); }
+.sx-orbs .n { font-family: var(--disp); font-size: 24px; color: var(--cyan); line-height: 1; letter-spacing: .03em;
+  text-shadow: 0 0 18px color-mix(in oklab, var(--cyan) 50%, transparent); }
+.sx-orbs .l { font-size: 10px; letter-spacing: .12em; text-transform: uppercase; color: var(--faint); }
+
+/* Below ~560px the strip's four blocks can't share a row without the Devil
+   Trigger bar collapsing to a sliver. Give it its own line instead. */
+@media (max-width: 560px) {
+  .sx-strip { gap: 12px 16px; }
+  .sx-rankltr { font-size: 34px; min-width: 28px; }
+  .sx-dt { order: 1; flex-basis: 100%; max-width: none; }
+  .sx-orbs { margin-left: 0; }
+}
+
+/* lens readout — one quiet line, only when asked for */
+.sx-readout { flex-basis: 100%; display: flex; gap: 15px; margin-top: 2px; padding-top: 11px;
+  border-top: 1px dashed var(--line2); font-size: 11.5px; color: var(--muted);
+  flex-wrap: wrap; align-items: center; }
+.sx-readout .t { font-size: 10px; letter-spacing: .18em; text-transform: uppercase; color: var(--cyan); }
+.sx-readout b { font-family: var(--mono); color: var(--text); }
+.sx-readout .pos { color: var(--secure); } .sx-readout .neg { color: var(--misc); }
+
+/* ── results ──────────────────────────────────────────────────────────── */
+.sx-results { max-width: 900px; margin: 0 auto; width: 100%; }
+.sx-rhead { display: flex; align-items: baseline; gap: 13px; margin-bottom: 22px; flex-wrap: wrap; }
+.sx-rtitle { font-family: var(--disp); font-size: 36px; letter-spacing: .1em; text-transform: uppercase;
+  color: var(--bone); text-shadow: 0 0 30px color-mix(in oklab, var(--cyan) 45%, transparent); }
+.sx-rsub { font-size: 12.5px; color: var(--muted); }
+.sx-cellrow { display: grid; grid-template-columns: repeat(4,1fr); gap: 9px; margin-bottom: 26px; }
+@media (max-width: 620px) { .sx-cellrow { grid-template-columns: repeat(2,1fr); } }
+.sx-cp { position: relative; border: 1px solid var(--line); border-radius: 4px; padding: 13px 14px;
+  background: var(--panel); overflow: hidden; }
+.sx-cp::before { content: ""; position: absolute; left: 0; right: 0; top: 0; height: 2px;
+  background: var(--cc); box-shadow: 0 0 14px var(--cc); }
+.sx-cp .n { font-family: var(--disp); font-size: 31px; color: var(--cc); line-height: 1; letter-spacing: .03em; }
+.sx-cp .l { font-size: 10.5px; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); margin-top: 5px; }
+.sx-sec { font-size: 10.5px; letter-spacing: .18em; text-transform: uppercase; color: var(--faint); margin: 0 0 13px; }
+.sx-rgrid { display: grid; grid-template-columns: 1fr 1fr; gap: 30px; }
+@media (max-width: 760px) { .sx-rgrid { grid-template-columns: 1fr; gap: 24px; } }
+
+.sx-arm { display: flex; align-items: center; gap: 11px; padding: 8px 0; }
+.sx-em { width: 28px; height: 28px; flex: none; display: grid; place-items: center; color: var(--void);
+  border-radius: 3px; background: linear-gradient(150deg, var(--ac), color-mix(in oklab, var(--ac) 40%, var(--void)));
+  box-shadow: 0 0 14px -3px var(--ac); }
+.sx-em svg { width: 16px; height: 16px; }
+.sx-abd { flex: 1; min-width: 0; }
+.sx-ar1 { display: flex; justify-content: space-between; gap: 8px; align-items: baseline; }
+.sx-anm { font-size: 12.5px; font-weight: 600; } .sx-alv { font-family: var(--mono); font-size: 11px; color: var(--muted); }
+.sx-amiss { font-family: var(--mono); font-size: 11px; color: var(--misc); }
+.sx-abar { height: 5px; background: var(--steel); overflow: hidden; margin-top: 6px; border-radius: 2px;
+  box-shadow: inset 0 0 0 1px var(--line2); }
+.sx-abar i { display: block; height: 100%; width: 10%; background: var(--ac);
+  box-shadow: 0 0 10px var(--ac); transition: width .5s var(--ease); }
+
+.sx-lb { display: flex; align-items: center; gap: 10px; padding: 7px 0; }
+.sx-lb .p { font-family: var(--disp); width: 20px; text-align: center; color: var(--faint); font-size: 13px; }
+.sx-lb .a { width: 26px; height: 26px; display: grid; place-items: center; color: var(--void);
+  font-family: var(--disp); font-size: 10px; border-radius: 3px; }
+.sx-lb .h { flex: 1; font-size: 12.5px; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sx-lb .v { font-family: var(--mono); font-size: 12px; white-space: nowrap; }
+.sx-lb .v small { color: var(--faint); font-size: 9.5px; margin-left: 3px; }
+.sx-lb.me { background: color-mix(in oklab, var(--cyan) 12%, transparent); padding: 7px 8px; border-radius: 3px;
+  box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--cyan) 35%, transparent); }
+.sx-lb .v.good { color: var(--secure); } .sx-lb .v.mid { color: var(--fragile); }
+.sx-note { font-size: 11px; color: var(--faint); margin-top: 10px; line-height: 1.55; max-width: 46ch; }
+
+.sx-actions { display: flex; gap: 11px; align-items: center; flex-wrap: wrap; margin-top: 30px;
+  padding-top: 18px; border-top: 1px solid var(--line2); }
+.sx-btn { cursor: pointer; border: 1px solid transparent; font-family: var(--disp); text-transform: uppercase;
+  letter-spacing: .1em; font-size: 15px; padding: 12px 22px; border-radius: 3px;
+  background: linear-gradient(100deg, var(--cyan), var(--violet)); color: var(--void); font-weight: 700;
+  box-shadow: 0 0 24px -6px color-mix(in oklab, var(--cyan) 75%, transparent); transition: .18s var(--ease); }
+.sx-btn:hover { filter: brightness(1.14); box-shadow: 0 0 30px -4px color-mix(in oklab, var(--cyan) 85%, transparent); }
+.sx-btn.ghost { background: var(--panel2); color: var(--text); border-color: var(--line); box-shadow: none; }
+.sx-btn.ghost:hover { border-color: var(--edge); color: var(--cyan); filter: none; }
+
+/* rank-up toast */
+.sx-toast { position: fixed; left: 50%; top: 18px; transform: translate(-50%,-160%); z-index: 70; padding: 12px 21px;
+  background: var(--panel); border: 1px solid var(--rank); border-radius: 4px; display: flex; gap: 12px; align-items: center;
+  backdrop-filter: blur(10px); box-shadow: 0 0 55px color-mix(in oklab, var(--rank) 45%, transparent);
+  transition: transform .5s var(--ease); }
+.sx-toast.show { transform: translate(-50%,0); }
+.sx-toast .r { font-family: var(--disp); font-size: 31px; color: var(--rank); letter-spacing: .03em;
+  text-shadow: 0 0 20px var(--rank); }
+.sx-toast .t b { font-family: var(--disp); font-size: 15px; letter-spacing: .08em; text-transform: uppercase; }
+.sx-toast .t span { display: block; font-size: 10px; color: var(--muted); letter-spacing: .16em; text-transform: uppercase; }
+
+.sx-boot { font-family: var(--disp); font-size: 26px; color: var(--muted); letter-spacing: .16em;
+  text-transform: uppercase; animation: hxPulseGlow 1.6s ease-in-out infinite; }
+
+/* --- onboarding: anchoring the four bins (plan §8) ------------------------ */
+.sx-tut { max-width: 760px; }
+.sx-tut-eyebrow { font-size: 10px; letter-spacing: .2em; text-transform: uppercase; color: var(--cyan);
+  margin-bottom: 14px; }
+.sx-tut .sx-statement { font-size: clamp(19px,2.9vw,30px); }
+.sx-tut-body { margin-top: 22px; border-top: 1px solid var(--line2); padding-top: 18px; }
+.sx-tut-lead { font-size: 15px; line-height: 1.55; margin: 0 0 12px; }
+.sx-tut-list { margin: 0 0 12px; padding-left: 18px; color: var(--muted); font-size: 13px; line-height: 1.75; }
+.sx-tut-list b { color: var(--text); }
+.sx-tut-rule { font-size: 13.5px; line-height: 1.65; color: var(--muted); margin: 0 0 12px;
+  border-left: 2px solid var(--misc); padding-left: 13px; }
+.sx-tut-rule b { color: var(--text); }
+.sx-tut-note { font-size: 11.5px; color: var(--faint); margin: 0 0 18px; }
+
+/* --- results: multi-board leaderboard (plan §8) --------------------------- */
+.sx-boardtabs { display: flex; gap: 6px; margin: 0 0 11px; flex-wrap: wrap; }
+.sx-boardtabs button { cursor: pointer; background: var(--panel2); border: 1px solid var(--line);
+  color: var(--muted); font: inherit; font-size: 10.5px; letter-spacing: .12em; text-transform: uppercase;
+  padding: 6px 11px; border-radius: 3px; transition: .18s var(--ease); }
+.sx-boardtabs button:hover { color: var(--text); border-color: var(--edge); }
+.sx-boardtabs button[aria-selected="true"] { color: var(--void); border-color: transparent;
+  background: linear-gradient(100deg, var(--cyan), var(--violet)); font-weight: 700; }

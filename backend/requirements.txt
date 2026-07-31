@@ -1,0 +1,10 @@
+# HYPERION backend. Install the scoring engine (repo root) first:
+#   pip install -e ..
+# then:
+#   pip install -r requirements.txt
+fastapi>=0.110
+uvicorn[standard]>=0.27
+sqlmodel>=0.0.16
+segno>=1.6           # QR for the /lan projector page — pure Python, no network
+httpx>=0.27          # used by fastapi.testclient
+pytest>=7            # tests

@@ -1,0 +1,373 @@
+<title>HYPERION — Enter</title>
+<style>
+  :root{
+    color-scheme:dark;
+    --bg:#08070a; --bg2:#0e0c11; --panel:#141017; --panel2:#1b151f; --steel:#221c29;
+    --line:rgba(255,255,255,.10); --line2:rgba(255,255,255,.05);
+    --text:#F2ECEF; --muted:#9a8fa0; --faint:#5f5568;
+    --red:#E6122B; --red2:#ff3355; --blood:#9c0d1e; --bone:#f4eee6; --gold:#FFC844;
+    --secure:#3fe0a2; --gap:#5aa9ff; --admin:#8f6fe0; --teach:#ff9d1e;
+    --disp:"Haettenschweiler","Impact","Franklin Gothic Bold","Arial Narrow Bold","Arial Narrow",system-ui,sans-serif;
+    --body:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+    --mono:ui-monospace,"SF Mono","Cascadia Code","Roboto Mono",monospace;
+    --shadow:0 30px 70px -34px #000;
+  }
+  :root[data-theme="light"]{color-scheme:light;
+    --bg:#dcd8dd; --bg2:#e7e3e8; --panel:#fff; --panel2:#f4f0f5; --steel:#ece7ee;
+    --line:rgba(20,10,25,.14); --line2:rgba(20,10,25,.06); --text:#160d1a; --muted:#5f5568; --faint:#8f8496; --bone:#160d1a;
+    --shadow:0 26px 56px -36px rgba(60,20,40,.5);}
+  *{box-sizing:border-box}
+  body{margin:0; min-height:100vh; color:var(--text); font-family:var(--body); line-height:1.5; -webkit-font-smoothing:antialiased;
+    display:flex; flex-direction:column; align-items:center; padding:26px 16px 50px;
+    background:radial-gradient(1100px 620px at 84% -12%, color-mix(in oklab,var(--red) 26%,transparent), transparent 58%),
+      radial-gradient(800px 520px at -8% 110%, color-mix(in oklab,var(--admin) 14%,transparent), transparent 60%),
+      linear-gradient(var(--bg2),var(--bg)); background-attachment:fixed;}
+  body::before{content:"";position:fixed;inset:0;z-index:0;pointer-events:none;opacity:.5;mix-blend-mode:overlay;
+    background:repeating-linear-gradient(115deg,transparent 0 46px,color-mix(in oklab,var(--red) 6%,transparent) 46px 47px)}
+  :root[data-theme="light"] body::before{opacity:.22}
+  .disp{font-family:var(--disp);text-transform:uppercase;letter-spacing:.03em;transform:skewX(-9deg)}
+  .mono{font-family:var(--mono);font-variant-numeric:tabular-nums}
+  .stage{position:relative;z-index:1;width:100%;max-width:560px}
+
+  .hdr{display:flex;align-items:center;gap:12px;justify-content:center;margin-bottom:22px}
+  .hdr svg{width:34px;height:34px;color:var(--red2)}
+  .hdr .lg{font-family:var(--disp);transform:skewX(-9deg);font-size:38px;line-height:1;color:var(--bone);
+    text-shadow:0 0 26px color-mix(in oklab,var(--red) 60%,transparent)} .hdr .lg b{color:var(--red)}
+  .hdr .sb{font-size:10px;letter-spacing:.24em;text-transform:uppercase;color:var(--muted);margin-top:4px}
+  .theme{position:fixed;top:16px;right:16px;z-index:3;width:36px;height:36px;border:1px solid var(--line);background:var(--panel2);
+    color:var(--muted);cursor:pointer;clip-path:polygon(8px 0,100% 0,100% 100%,0 100%)}
+
+  .panel{border:1px solid var(--line);background:linear-gradient(180deg,var(--panel),var(--panel2));box-shadow:var(--shadow);
+    clip-path:polygon(0 0,calc(100% - 20px) 0,100% 20px,100% 100%,20px 100%,0 calc(100% - 20px));padding:22px}
+  .step{display:none} .step.on{display:block; animation:in .25s ease-out}
+  @keyframes in{from{opacity:0;transform:translateY(6px)}to{opacity:1}}
+  .eyebrow{font-size:10px;letter-spacing:.22em;text-transform:uppercase;color:var(--red2);margin-bottom:6px}
+  h2.t{margin:0 0 4px;font-family:var(--disp);transform:skewX(-9deg);font-size:26px;letter-spacing:.03em}
+  p.d{margin:0 0 18px;font-size:13px;color:var(--muted)}
+
+  /* role cards */
+  .roles{display:grid;gap:12px}
+  .rc{display:flex;align-items:center;gap:14px;cursor:pointer;text-align:left;color:var(--text);
+    border:1px solid var(--line);background:linear-gradient(100deg,var(--steel),var(--panel2));padding:16px 16px;
+    transition:transform .12s,border-color .16s,box-shadow .16s;
+    clip-path:polygon(0 0,100% 0,100% calc(100% - 14px),calc(100% - 14px) 100%,0 100%)}
+  .rc:hover{transform:translateX(4px);border-color:var(--rcc);box-shadow:-6px 0 0 -2px var(--rcc),0 14px 30px -18px var(--rcc)}
+  .rc .ic{width:46px;height:46px;flex:none;display:grid;place-items:center;color:#0a0509;
+    background:linear-gradient(150deg,var(--rcc),color-mix(in oklab,var(--rcc) 45%,#000));
+    clip-path:polygon(0 0,100% 0,100% 76%,76% 100%,0 100%)} .rc .ic svg{width:26px;height:26px}
+  .rc .tx b{font-family:var(--disp);transform:skewX(-9deg);font-size:19px;letter-spacing:.03em;display:block}
+  .rc .tx span{font-size:12px;color:var(--muted)}
+  .rc .go{margin-left:auto;color:var(--rcc);font-size:22px}
+  .rc.student{--rcc:var(--red2)} .rc.teacher{--rcc:var(--teach)} .rc.admin{--rcc:var(--admin)}
+
+  .back{background:none;border:0;color:var(--muted);cursor:pointer;font-size:12px;letter-spacing:.08em;padding:0;margin-bottom:14px}
+  .back:hover{color:var(--text)}
+
+  .tabs{display:flex;gap:5px;padding:5px;border:1px solid var(--line);background:var(--steel);margin-bottom:18px;
+    clip-path:polygon(0 0,100% 0,100% 100%,0 100%)}
+  .tabs button{flex:1;border:0;background:transparent;color:var(--muted);cursor:pointer;font-weight:600;font-size:12.5px;padding:9px}
+  .tabs button[aria-selected="true"]{background:var(--panel);color:var(--text)}
+
+  .field{margin-bottom:14px} .field label{display:block;font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:var(--muted);margin-bottom:7px}
+  .in{width:100%;background:var(--steel);border:1px solid var(--line);color:var(--text);font-family:var(--body);font-size:14px;
+    padding:12px 13px;outline:none;clip-path:polygon(0 0,100% 0,100% 100%,8px 100%)}
+  .in:focus{border-color:var(--red2)} .in.mono{font-family:var(--mono);letter-spacing:.08em}
+  .row{display:grid;grid-template-columns:1fr 1fr;gap:10px} .row3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px}
+
+  .opts{display:grid;grid-template-columns:repeat(auto-fit,minmax(70px,1fr));gap:8px}
+  .pick{border:1px solid var(--line);background:var(--steel);color:var(--text);cursor:pointer;padding:11px 6px;text-align:center;
+    font-family:var(--disp);transform:skewX(-9deg);font-size:16px;letter-spacing:.02em;
+    clip-path:polygon(0 0,100% 0,100% 100%,7px 100%)}
+  .pick[aria-pressed="true"]{background:linear-gradient(150deg,var(--red2),var(--blood));color:var(--bone);border-color:transparent}
+  .pick.sm{font-size:13px;padding:9px 4px}
+
+  .avatars{display:flex;gap:8px;flex-wrap:wrap}
+  .avp{width:52px;height:52px;border:1px solid var(--line);background:var(--steel);cursor:pointer;display:grid;place-items:center;
+    color:#0a0509;font-family:var(--disp);transform:skewX(-9deg);font-size:16px;clip-path:polygon(0 0,100% 0,84% 100%,0 100%)}
+  .avp[aria-pressed="true"]{outline:2px solid var(--gold);outline-offset:2px}
+
+  .btn{width:100%;cursor:pointer;border:1px solid transparent;font-family:var(--disp);transform:skewX(-9deg);
+    text-transform:uppercase;letter-spacing:.05em;font-size:18px;padding:13px;margin-top:6px;
+    background:linear-gradient(100deg,var(--red2),var(--blood));color:var(--bone);
+    clip-path:polygon(10px 0,100% 0,calc(100% - 10px) 100%,0 100%)} .btn:hover{filter:brightness(1.12)}
+  .btn.ghost{background:var(--steel);color:var(--text);border-color:var(--line)}
+  .btn:disabled{opacity:.4;cursor:not-allowed}
+  .hint{font-size:11.5px;color:var(--faint);margin-top:12px;line-height:1.5} .hint b{color:var(--muted)}
+  .err{color:var(--red2);font-size:12px;margin-top:8px;min-height:16px}
+
+  /* generated code card */
+  .codecard{text-align:center;border:1px dashed color-mix(in oklab,var(--gold) 50%,var(--line));background:color-mix(in oklab,var(--gold) 8%,var(--steel));
+    padding:20px;margin:6px 0 14px;clip-path:polygon(0 0,100% 0,100% calc(100% - 12px),calc(100% - 12px) 100%,0 100%)}
+  .codecard .k{font-size:10px;letter-spacing:.2em;text-transform:uppercase;color:var(--muted)}
+  .codecard .code{font-family:var(--disp);transform:skewX(-9deg);font-size:34px;color:var(--gold);margin:6px 0;
+    text-shadow:0 0 24px color-mix(in oklab,var(--gold) 45%,transparent)}
+  .codecard .pin{font-family:var(--mono);font-size:14px;color:var(--text)} .codecard .pin b{color:var(--red2);letter-spacing:.2em}
+
+  /* admin issued list */
+  .issued{margin-top:16px;border-top:1px solid var(--line2);padding-top:14px}
+  .issued .h{font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:var(--muted);margin-bottom:10px;display:flex}
+  .issued .h .c{margin-left:auto;color:var(--faint)}
+  .tid{display:flex;align-items:center;gap:10px;padding:9px 0;border-top:1px solid var(--line2)}
+  .tid:first-of-type{border-top:0}
+  .tid .badge{font-size:9px;letter-spacing:.08em;text-transform:uppercase;padding:3px 8px;border:1px solid var(--bc);color:var(--bc);
+    clip-path:polygon(6px 0,100% 0,100% 100%,0 100%)}
+  .tid.class{--bc:var(--gap)} .tid.subject{--bc:var(--teach)}
+  .tid .id{font-family:var(--mono);font-size:13px;flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .tid .pin{font-family:var(--mono);font-size:12px;color:var(--muted)}
+  .tid .scope{font-size:11px;color:var(--faint)}
+  .empty{font-size:12px;color:var(--faint);font-style:italic}
+
+  /* success launch */
+  .launch{text-align:center}
+  .launch .ic{width:64px;height:64px;margin:4px auto 10px;color:var(--secure);filter:drop-shadow(0 0 16px var(--secure))}
+  .launch h2{font-family:var(--disp);transform:skewX(-9deg);font-size:28px;margin:0 0 6px}
+  .launch p{color:var(--muted);font-size:13px;margin:0 0 18px}
+  .a-link{display:inline-block;text-decoration:none}
+  .foot{margin-top:20px;font-size:10.5px;color:var(--faint);text-align:center;line-height:1.6;max-width:560px}
+  .foot b{color:var(--muted)}
+  *:focus-visible{outline:2px solid var(--red2);outline-offset:2px}
+  @media (prefers-reduced-motion:reduce){*{animation-duration:.001ms!important;transition-duration:.001ms!important}}
+</style>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>
+  <symbol id="s-hyperion" viewBox="0 0 24 24"><path fill="currentColor" d="M12 1 2 21h20L12 1zm0 5 6 12H6l6-12z"/><path fill="currentColor" opacity=".6" d="M12 6 6 18l6-4V6z"/></symbol>
+  <symbol id="s-student" viewBox="0 0 24 24" fill="currentColor"><path d="M12 3 1 8l11 5 9-4.1V15h2V8z"/><path d="M5 12v4c0 1.7 3.1 3 7 3s7-1.3 7-3v-4l-7 3.2z"/></symbol>
+  <symbol id="s-teacher" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><rect x="3" y="4" width="18" height="13"/><path d="M7 20h10M12 17v3"/><path d="M7 8h7M7 12h5" stroke-linecap="round"/></symbol>
+  <symbol id="s-admin" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l7 3v6c0 5-3 8-7 10-4-2-7-5-7-10V5z"/><path fill="#08070a" d="M12 7l1.6 3.2 3.4.5-2.5 2.4.6 3.4L12 15.3 8.9 17l.6-3.4L7 11.2l3.4-.5z"/></symbol>
+  <symbol id="s-go" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M8 5l7 7-7 7"/></symbol>
+  <symbol id="s-check" viewBox="0 0 24 24"><path fill="currentColor" d="M12 2l7 3v6c0 5-3 8-7 10-4-2-7-5-7-10V5z"/><path fill="#08070a" d="M10.5 13.5 8 11l-1.4 1.4 3.9 3.9L17 9.7 15.6 8.3z"/></symbol>
+</defs></svg>
+
+<button class="theme" id="themeBtn" aria-label="Toggle theme">◐</button>
+
+<div class="stage">
+  <div class="hdr">
+    <svg><use href="#s-hyperion"/></svg>
+    <div><div class="lg">HYPER<b>ION</b></div><div class="sb">Pre-requisite Audit · Class 7 Maths</div></div>
+  </div>
+
+  <div class="panel">
+    <!-- STEP: role select -->
+    <section class="step on" id="stRole">
+      <div class="eyebrow">Choose how you enter</div>
+      <h2 class="t">Who's arriving?</h2>
+      <p class="d">Access is role-scoped. Students make their own code; teachers use an admin-issued ID; the admin issues those IDs.</p>
+      <div class="roles">
+        <button class="rc student" data-go="student"><span class="ic"><svg><use href="#s-student"/></svg></span>
+          <span class="tx"><b>I'm a student</b><span>Create your own code, or return with one</span></span><span class="go"><svg width="20" height="20"><use href="#s-go"/></svg></span></button>
+        <button class="rc teacher" data-go="teacher"><span class="ic"><svg><use href="#s-teacher"/></svg></span>
+          <span class="tx"><b>I'm a teacher</b><span>Sign in with your Teacher ID</span></span><span class="go"><svg width="20" height="20"><use href="#s-go"/></svg></span></button>
+        <button class="rc admin" data-go="admin"><span class="ic"><svg><use href="#s-admin"/></svg></span>
+          <span class="tx"><b>Admin</b><span>Provision teachers &amp; issue IDs</span></span><span class="go"><svg width="20" height="20"><use href="#s-go"/></svg></span></button>
+      </div>
+    </section>
+
+    <!-- STEP: student -->
+    <section class="step" id="stStudent">
+      <button class="back" data-back="stRole">‹ Back</button>
+      <div class="tabs" role="tablist">
+        <button role="tab" id="tabNew" aria-selected="true">New — make my code</button>
+        <button role="tab" id="tabRet" aria-selected="false">Returning</button>
+      </div>
+
+      <div id="paneNew">
+        <div class="eyebrow">Step 1 · your class</div>
+        <h2 class="t">Set up your code</h2>
+        <p class="d">No name, no email — ever. You'll get an anonymous code that's yours to keep.</p>
+        <div class="field"><label>Class</label><div class="opts" id="pkClass"></div></div>
+        <div class="field"><label>Section</label><div class="opts" id="pkSection"></div></div>
+        <div class="field"><label>Subject</label><div class="opts" id="pkSubject"></div></div>
+        <div class="field"><label>Pick an avatar &amp; call-sign</label><div class="avatars" id="pkAvatar"></div></div>
+        <div class="field"><label>Set a 4-digit PIN (optional — protects your code)</label>
+          <input class="in mono" id="stPin" inputmode="numeric" maxlength="4" placeholder="••••"></div>
+        <div class="err" id="stErr"></div>
+        <button class="btn" id="stGen">Forge my code ▸</button>
+        <p class="hint">Your code is generated from your call-sign — <b>memorise it</b>, it's your only way back in.</p>
+      </div>
+
+      <div id="paneRet" hidden>
+        <div class="eyebrow">Welcome back</div>
+        <h2 class="t">Enter your code</h2>
+        <p class="d">Type the code you were given, plus your PIN if you set one.</p>
+        <div class="field"><label>Student code</label><input class="in mono" id="retCode" placeholder="KESTREL·4B"></div>
+        <div class="field"><label>PIN (if you set one)</label><input class="in mono" id="retPin" inputmode="numeric" maxlength="4" placeholder="••••"></div>
+        <div class="err" id="retErr"></div>
+        <button class="btn" id="retGo">Enter the diagnostic ▸</button>
+      </div>
+    </section>
+
+    <!-- STEP: teacher -->
+    <section class="step" id="stTeacher">
+      <button class="back" data-back="stRole">‹ Back</button>
+      <div class="eyebrow">Staff sign-in</div>
+      <h2 class="t">Teacher ID</h2>
+      <p class="d">Use the ID your admin issued you. It already carries your role and the classes you can see.</p>
+      <div class="field"><label>Teacher ID</label><input class="in mono" id="tId" placeholder="MATH-7B-XXXX"></div>
+      <div class="field"><label>PIN</label><input class="in mono" id="tPin" inputmode="numeric" maxlength="4" placeholder="••••"></div>
+      <div class="err" id="tErr"></div>
+      <button class="btn" id="tGo">Open my console ▸</button>
+      <p class="hint">No ID yet? <b>Ask your admin to issue one</b> — teachers can't self-register. Demo hint: any admin-issued ID from the Admin flow works here.</p>
+    </section>
+
+    <!-- STEP: admin -->
+    <section class="step" id="stAdmin">
+      <button class="back" data-back="stRole">‹ Back</button>
+      <div class="eyebrow">Restricted</div>
+      <h2 class="t">Admin sign-in</h2>
+      <p class="d">Only the admin can provision teachers.</p>
+      <div class="field"><label>Admin ID</label><input class="in mono" id="aId" placeholder="admin" value="admin"></div>
+      <div class="field"><label>Passcode</label><input class="in mono" id="aPass" type="password" placeholder="••••••" value="hyperion"></div>
+      <div class="err" id="aErr"></div>
+      <button class="btn" id="aGo">Sign in ▸</button>
+      <p class="hint">Demo passcode is pre-filled. In deployment this is a real credential on the teacher's laptop.</p>
+    </section>
+
+    <!-- STEP: admin console -->
+    <section class="step" id="stAdminConsole">
+      <button class="back" data-back="stRole" id="adminOut">‹ Sign out</button>
+      <div class="eyebrow">Admin console</div>
+      <h2 class="t">Issue a Teacher ID</h2>
+      <p class="d">Generate credentials for a class teacher (one section) or a subject teacher (a subject across sections).</p>
+      <div class="field"><label>Role type</label><div class="opts" id="pkRole"></div></div>
+      <div class="field" id="fSection"><label>Section (class teacher owns one)</label><div class="opts" id="pkTSection"></div></div>
+      <div class="field" id="fSubject" hidden><label>Subject</label><div class="opts" id="pkTSubject"></div></div>
+      <div class="field" id="fSections" hidden><label>Sections this subject teacher sees</label><div class="opts" id="pkTSections"></div></div>
+      <div class="err" id="adErr"></div>
+      <button class="btn" id="adGen">Generate Teacher ID ▸</button>
+
+      <div class="issued">
+        <div class="h">Issued this session <span class="c" id="issCount">0</span></div>
+        <div id="issList"><p class="empty">No IDs issued yet.</p></div>
+      </div>
+    </section>
+
+    <!-- STEP: launch (student/teacher success) -->
+    <section class="step launch" id="stLaunch">
+      <svg class="ic"><use href="#s-check"/></svg>
+      <h2 id="lTitle">You're in</h2>
+      <p id="lDesc">Launching…</p>
+      <div id="lCodeWrap"></div>
+      <a class="a-link" id="lLink" href="#" target="_blank" rel="noopener"><span class="btn" style="display:inline-block;width:auto;padding:13px 26px">Launch ▸</span></a>
+      <div style="height:8px"></div>
+      <button class="btn ghost" data-back="stRole" style="width:auto;padding:11px 20px;display:inline-block">Switch user</button>
+    </section>
+  </div>
+
+  <p class="foot"><b>Data-minimised by design:</b> students are anonymous codes (no names, no PII), teachers are admin-issued IDs, and the admin never sees a child's real identity — only codes. Aligned with the plan's §10 privacy stance for minors.</p>
+</div>
+
+<script>
+(function(){
+  "use strict";
+  var HYPERION_URL="https://claude.ai/code/artifact/a111c9af-4adf-4edb-a613-cc988dcebb7d";
+  var CONSOLE_URL="https://claude.ai/code/artifact/f83a414c-065b-4e09-bf77-8852999fc1dd";
+  var $=function(i){return document.getElementById(i);};
+  var ANIMALS=['KESTREL','FALCON','OTTER','LYNX','MOTH','HERON','VIPER','CRANE','WREN','ORYX','IBIS','MERLIN','FINCH','ROOK','JAY','KITE','LARK'];
+  var AVCOL=['var(--red2)','var(--gap)','var(--secure)','var(--gold)','var(--admin)','var(--teach)'];
+  function rint(n){return Math.floor(Math.random()*n);}
+  function pin4(){return String(1000+rint(9000));}
+  function hex(n){var s='',c='ABCDEFGHJKLMNPQRSTUVWXYZ23456789';for(var i=0;i<n;i++)s+=c[rint(c.length)];return s;}
+
+  function show(id){Array.prototype.forEach.call(document.querySelectorAll('.step'),function(s){s.classList.toggle('on',s.id===id);});
+    window.scrollTo({top:0,behavior:'smooth'});}
+
+  // role cards + back
+  Array.prototype.forEach.call(document.querySelectorAll('[data-go]'),function(b){b.addEventListener('click',function(){
+    var g=b.getAttribute('data-go'); show(g==='student'?'stStudent':g==='teacher'?'stTeacher':'stAdmin');});});
+  document.addEventListener('click',function(e){var b=e.target.closest('[data-back]'); if(b)show(b.getAttribute('data-back'));});
+
+  // ---- generic picker builder ----
+  function picker(host,vals,single,cls){var el=$(host); el.innerHTML=''; var state={};
+    vals.forEach(function(v,i){var btn=document.createElement('button'); btn.className='pick'+(cls||''); btn.type='button';
+      btn.textContent=v; btn.setAttribute('aria-pressed', single&&i===0?'true':'false'); if(single&&i===0)state.val=v;
+      btn.addEventListener('click',function(){ if(single){Array.prototype.forEach.call(el.children,function(c){c.setAttribute('aria-pressed','false');}); btn.setAttribute('aria-pressed','true'); state.val=v; if(el._cb)el._cb(v);}
+        else{var on=btn.getAttribute('aria-pressed')==='true'; btn.setAttribute('aria-pressed', on?'false':'true');}});
+      el.appendChild(btn);});
+    return {get:function(){return single?state.val:Array.prototype.filter.call(el.children,function(c){return c.getAttribute('aria-pressed')==='true';}).map(function(c){return c.textContent;});},
+      onChange:function(cb){el._cb=cb;}};}
+
+  // ---- STUDENT ----
+  $('tabNew').addEventListener('click',function(){this.setAttribute('aria-selected','true');$('tabRet').setAttribute('aria-selected','false');$('paneNew').hidden=false;$('paneRet').hidden=true;});
+  $('tabRet').addEventListener('click',function(){this.setAttribute('aria-selected','true');$('tabNew').setAttribute('aria-selected','false');$('paneRet').hidden=false;$('paneNew').hidden=true;});
+  var pClass=picker('pkClass',['Class 6','Class 7','Class 8'],true);
+  var pSec=picker('pkSection',['A','B','C','D'],true);
+  var pSub=picker('pkSubject',['Maths','Science'],true);
+  // avatars
+  var avHost=$('pkAvatar'), avSel={i:0};
+  ANIMALS.slice(0,6).forEach(function(a,i){var b=document.createElement('button'); b.className='avp'; b.type='button';
+    b.style.background='linear-gradient(150deg,'+AVCOL[i]+',color-mix(in oklab,'+AVCOL[i]+' 45%,#000))';
+    b.textContent=a.slice(0,2); b.title=a; b.setAttribute('aria-pressed',i===0?'true':'false');
+    b.addEventListener('click',function(){Array.prototype.forEach.call(avHost.children,function(c){c.setAttribute('aria-pressed','false');}); b.setAttribute('aria-pressed','true'); avSel.i=i;});
+    avHost.appendChild(b);});
+
+  $('stGen').addEventListener('click',function(){
+    var cls=pClass.get(), sec=pSec.get(), sub=pSub.get(), pin=$('stPin').value.trim();
+    if(pin && !/^\d{4}$/.test(pin)){$('stErr').textContent='PIN must be exactly 4 digits (or leave it blank).'; return;}
+    $('stErr').textContent='';
+    var animal=ANIMALS[avSel.i], code=animal+'·'+(1+rint(9))+sec;
+    launch('student', code, pin, {cls:cls,sec:sec,sub:sub});
+  });
+  $('retGo').addEventListener('click',function(){
+    var code=$('retCode').value.trim().toUpperCase();
+    if(!code){$('retErr').textContent='Enter your student code.'; return;}
+    $('retErr').textContent=''; launch('student', code, $('retPin').value.trim(), null, true);
+  });
+
+  // ---- TEACHER ----
+  $('tGo').addEventListener('click',function(){
+    var id=$('tId').value.trim().toUpperCase(), pin=$('tPin').value.trim();
+    if(!/^[A-Z]+-[A-Z0-9]+-[A-Z0-9]{4}$/.test(id)){$('tErr').textContent='That doesn’t look like a Teacher ID (e.g. MATH-7B-K3Q9).'; return;}
+    if(!/^\d{4}$/.test(pin)){$('tErr').textContent='Enter your 4-digit PIN.'; return;}
+    $('tErr').textContent=''; launch('teacher', id, pin);
+  });
+
+  // ---- ADMIN ----
+  $('aGo').addEventListener('click',function(){
+    if($('aId').value.trim()!=='admin' || $('aPass').value!=='hyperion'){$('aErr').textContent='Wrong admin ID or passcode.'; return;}
+    $('aErr').textContent=''; show('stAdminConsole');
+  });
+  var pRole=picker('pkRole',['Class teacher','Subject teacher'],true);
+  var pTSec=picker('pkTSection',['7A','7B','7C','7D'],true);
+  var pTSub=picker('pkTSubject',['Maths','Science'],true);
+  var pTSecs=picker('pkTSections',['7A','7B','7C','7D'],false);
+  pRole.onChange(function(v){var subj=v==='Subject teacher';
+    $('fSection').hidden=subj; $('fSubject').hidden=!subj; $('fSections').hidden=!subj;});
+  var issued=[];
+  $('adGen').addEventListener('click',function(){
+    var role=pRole.get(); var subj=role==='Subject teacher'; var id,scope,cls;
+    if(subj){ var secs=pTSecs.get(); if(!secs.length){$('adErr').textContent='Pick at least one section.'; return;}
+      var subjv=pTSub.get(); id=(subjv==='Maths'?'MATH':'SCI')+'-'+secs.map(function(s){return s.replace('7','');}).join('')+'-'+hex(4);
+      scope=subjv+' · '+secs.join(' '); cls='subject';
+    } else { var sec=pTSec.get(); id='MATH-'+sec.replace('7','')+'B'.slice(0,0)+sec.replace('7','')+'-'+hex(4);
+      id='MATH-'+sec.replace('7','')+'-'+hex(4); scope='Class '+sec+' · all students'; cls='class'; }
+    $('adErr').textContent='';
+    issued.unshift({id:id, pin:pin4(), scope:scope, cls:cls, role:role});
+    renderIssued();
+  });
+  function renderIssued(){$('issCount').textContent=issued.length;
+    var el=$('issList'); if(!issued.length){el.innerHTML='<p class="empty">No IDs issued yet.</p>'; return;}
+    el.innerHTML=''; issued.forEach(function(t){var d=document.createElement('div'); d.className='tid '+t.cls;
+      d.innerHTML='<span class="badge">'+(t.cls==='class'?'Class':'Subject')+'</span>'+
+        '<span class="id">'+t.id+'</span><span class="scope">'+t.scope+'</span><span class="pin">PIN '+t.pin+'</span>'; el.appendChild(d);});}
+  $('adminOut').addEventListener('click',function(){issued=[]; renderIssued();});
+
+  // ---- launch ----
+  function launch(kind, code, pin, meta, returning){
+    var isStudent=kind==='student';
+    $('lTitle').textContent=isStudent?(returning?'Welcome back':'Code forged'):'Signed in';
+    var wrap=$('lCodeWrap'); wrap.innerHTML='';
+    if(isStudent && !returning){
+      wrap.innerHTML='<div class="codecard"><div class="k">Your student code</div><div class="code">'+code+'</div>'+
+        '<div class="pin">'+(pin?('PIN <b>'+pin+'</b>'):'no PIN set')+'</div></div>';
+      $('lDesc').textContent='Remember this code — it’s your only way back in. Then step into the diagnostic.';
+    } else if(isStudent){ $('lDesc').textContent='Code '+code+' recognised. Loading your session.'; }
+    else { $('lDesc').textContent='Teacher '+code+' — opening the role-scoped console.'; }
+    var link=$('lLink'); link.href=isStudent?HYPERION_URL:CONSOLE_URL;
+    link.querySelector('.btn').textContent=(isStudent?'Enter HYPERION':'Open console')+' ▸';
+    show('stLaunch');
+  }
+
+  $('themeBtn').addEventListener('click',function(){var c=document.documentElement.getAttribute('data-theme');
+    document.documentElement.setAttribute('data-theme', c==='light'?'dark':(c==='dark'?'light':(matchMedia('(prefers-color-scheme: dark)').matches?'light':'dark')));});
+})();
+</script>

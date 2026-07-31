@@ -1,0 +1,36 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+build/
+dist/
+.venv/
+venv/
+.pytest_cache/
+.mypy_cache/
+.coverage
+htmlcov/
+
+# Local diagnostic database + backups (never commit student data)
+*.db
+*.db-wal
+*.db-shm
+*.sqlite
+*.sqlite3
+backups/
+
+# Node / frontend (Phase 1)
+node_modules/
+dist-frontend/
+.vite/
+
+# Editor / OS
+.vscode/
+.idea/
+.DS_Store
+
+# Frontend build
+frontend/dist/
+frontend/node_modules/
+*.tsbuildinfo

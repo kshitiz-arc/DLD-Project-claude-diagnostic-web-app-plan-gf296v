@@ -1,0 +1,463 @@
+<title>HYPERION — Teacher Console</title>
+<style>
+  :root{
+    color-scheme:dark;
+    --bg:#0B0B12; --bg2:#101019; --surface:#161622; --surface2:#1d1d2b; --surface3:#242435;
+    --line:rgba(255,255,255,.09); --line-2:rgba(255,255,255,.05);
+    --text:#ECEAF3; --muted:#9A98AD; --faint:#6b6980;
+    --gold:#FFC24B; --brand:#8E6FE0;
+    --secure:#34D399; --fragile:#FBBF24; --gap:#60A5FA; --misc:#F43F5E;
+    --shadow:0 20px 50px -30px rgba(0,0,0,.8);
+    --disp:"Haettenschweiler","Impact","Franklin Gothic Bold","Arial Narrow",system-ui,sans-serif;
+    --body:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+    --mono:ui-monospace,"SF Mono","Cascadia Code","Roboto Mono",monospace;
+  }
+  @media (prefers-color-scheme:light){
+    :root{color-scheme:light;
+      --bg:#EBEBF2; --bg2:#f0f1f7; --surface:#ffffff; --surface2:#f5f6fb; --surface3:#eceef6;
+      --line:rgba(20,18,40,.13); --line-2:rgba(20,18,40,.06);
+      --text:#181726; --muted:#5b5872; --faint:#8b88a0; --shadow:0 20px 46px -32px rgba(50,40,90,.5);}
+  }
+  :root[data-theme="dark"]{color-scheme:dark;
+    --bg:#0B0B12; --bg2:#101019; --surface:#161622; --surface2:#1d1d2b; --surface3:#242435;
+    --line:rgba(255,255,255,.09); --line-2:rgba(255,255,255,.05);
+    --text:#ECEAF3; --muted:#9A98AD; --faint:#6b6980; --shadow:0 20px 50px -30px rgba(0,0,0,.8);}
+  :root[data-theme="light"]{color-scheme:light;
+    --bg:#EBEBF2; --bg2:#f0f1f7; --surface:#ffffff; --surface2:#f5f6fb; --surface3:#eceef6;
+    --line:rgba(20,18,40,.13); --line-2:rgba(20,18,40,.06);
+    --text:#181726; --muted:#5b5872; --faint:#8b88a0; --shadow:0 20px 46px -32px rgba(50,40,90,.5);}
+
+  *{box-sizing:border-box}
+  body{margin:0; background:
+      radial-gradient(1200px 520px at 82% -10%, color-mix(in oklab,var(--brand) 14%,transparent), transparent 60%),
+      linear-gradient(var(--bg2),var(--bg));
+    background-attachment:fixed; color:var(--text); font-family:var(--body); line-height:1.5;
+    -webkit-font-smoothing:antialiased; min-height:100vh;}
+  .disp{font-family:var(--disp); text-transform:uppercase; letter-spacing:.04em; transform:skewX(-6deg)}
+  .mono{font-family:var(--mono); font-variant-numeric:tabular-nums}
+  .wrap{max-width:1320px; margin:0 auto; padding:18px clamp(14px,2.6vw,28px) 56px}
+
+  /* ---- header ---- */
+  .top{display:flex; align-items:center; gap:16px; flex-wrap:wrap; margin-bottom:16px}
+  .brand{display:flex; align-items:baseline; gap:10px}
+  .brand .logo{font-family:var(--disp); transform:skewX(-6deg); font-size:27px; letter-spacing:.05em;
+    background:linear-gradient(92deg,var(--gold),var(--brand)); -webkit-background-clip:text; background-clip:text; color:transparent}
+  .brand .sub{font-size:11px; color:var(--muted); text-transform:uppercase; letter-spacing:.17em}
+  .spacer{margin-left:auto}
+  .roles{display:flex; gap:5px; padding:5px; border:1px solid var(--line); border-radius:13px; background:var(--surface2)}
+  .role{cursor:pointer; border:0; background:transparent; color:var(--muted); font-family:var(--body);
+    padding:9px 15px; border-radius:9px; font-size:12.5px; font-weight:600; letter-spacing:.02em; display:flex; gap:9px; align-items:center}
+  .role .g{width:8px;height:8px;border-radius:2px;background:var(--faint)}
+  .role[aria-selected="true"]{background:var(--surface3); color:var(--text); box-shadow:0 1px 0 var(--line-2)}
+  .role[aria-selected="true"] .g{background:var(--gold)}
+  .role:hover{color:var(--text)}
+  .iconbtn{width:38px;height:38px;border-radius:10px;border:1px solid var(--line);background:var(--surface2);
+    color:var(--muted);cursor:pointer;font-size:16px}
+  .iconbtn:hover{color:var(--text)}
+
+  .scope{display:flex; align-items:center; gap:12px; flex-wrap:wrap; padding:12px 16px; margin-bottom:16px;
+    border:1px solid var(--line); border-radius:14px; background:linear-gradient(180deg,var(--surface),var(--surface2)); box-shadow:var(--shadow)}
+  .scope .who{font-family:var(--disp); transform:skewX(-6deg); font-size:19px; letter-spacing:.03em}
+  .scope .desc{font-size:12.5px; color:var(--muted)}
+  .scope .desc b{color:var(--text); font-weight:600}
+  .secfilter{display:flex; gap:6px; margin-left:auto}
+  .secfilter .sc{cursor:pointer; border:1px solid var(--line); background:var(--surface2); color:var(--muted);
+    padding:6px 12px; border-radius:8px; font-size:12px; font-weight:600; font-family:var(--mono)}
+  .secfilter .sc[aria-pressed="true"]{background:color-mix(in oklab,var(--gold) 16%,var(--surface2)); color:var(--text);
+    border-color:color-mix(in oklab,var(--gold) 40%,var(--line))}
+  .secfilter.hide{display:none}
+
+  /* ---- KPI strip ---- */
+  .kpis{display:grid; grid-template-columns:repeat(5,1fr); gap:12px; margin-bottom:16px}
+  @media (max-width:900px){.kpis{grid-template-columns:repeat(2,1fr)}}
+  .kpi{position:relative; border:1px solid var(--line); border-radius:14px; padding:14px 15px;
+    background:linear-gradient(180deg,var(--surface),var(--surface2)); box-shadow:var(--shadow); overflow:hidden}
+  .kpi .l{font-size:10.5px; letter-spacing:.14em; text-transform:uppercase; color:var(--muted)}
+  .kpi .v{font-family:var(--disp); transform:skewX(-6deg); font-size:38px; line-height:1; margin-top:6px}
+  .kpi .u{font-size:12px; color:var(--faint); margin-top:5px}
+  .kpi .stripe{position:absolute; left:0; top:0; bottom:0; width:4px; background:var(--k,var(--brand))}
+  .kpi.good{--k:var(--secure)} .kpi.warn{--k:var(--fragile)} .kpi.bad{--k:var(--misc)} .kpi.info{--k:var(--gap)}
+  .kpi .v small{font-size:15px; color:var(--muted); font-family:var(--body); transform:none; display:inline-block; margin-left:2px}
+
+  /* ---- main grid ---- */
+  .grid{display:grid; grid-template-columns:minmax(0,1fr) 372px; gap:16px; align-items:start}
+  @media (max-width:1040px){.grid{grid-template-columns:1fr}}
+  .col{display:flex; flex-direction:column; gap:16px}
+  .panel{border:1px solid var(--line); border-radius:16px; background:linear-gradient(180deg,var(--surface),var(--surface2));
+    box-shadow:var(--shadow); overflow:hidden}
+  .phead{display:flex; align-items:center; gap:10px; padding:14px 16px 12px}
+  .phead h2{margin:0; font-family:var(--disp); transform:skewX(-6deg); font-size:18px; letter-spacing:.04em}
+  .phead .hint{font-size:11px; color:var(--muted); margin-left:auto; letter-spacing:.03em}
+  .pbody{padding:2px 16px 16px}
+
+  /* concept heatmap */
+  .heat{display:flex; flex-direction:column}
+  .hrow{display:grid; grid-template-columns:132px 1fr 66px 58px; gap:12px; align-items:center; padding:9px 0;
+    border-top:1px solid var(--line-2)}
+  .hrow.head{border-top:0; padding-top:2px}
+  .hrow.head span{font-size:10px; letter-spacing:.12em; text-transform:uppercase; color:var(--faint)}
+  .cname{font-size:13px; font-weight:600; display:flex; align-items:center; gap:8px}
+  .cname .sq{width:8px;height:8px;border-radius:2px;background:var(--brand); flex:none}
+  .mbar{position:relative; height:16px; border-radius:8px; background:var(--surface3); overflow:hidden; border:1px solid var(--line-2)}
+  .mbar i{display:block; height:100%; background:linear-gradient(90deg,var(--misc),var(--fragile) 55%,var(--secure))}
+  .mbar b{position:absolute; right:7px; top:50%; transform:translateY(-50%); font-family:var(--mono); font-size:10px;
+    font-variant-numeric:tabular-nums; color:var(--text); mix-blend-mode:normal; text-shadow:0 1px 2px rgba(0,0,0,.5)}
+  .mdens{font-family:var(--mono); font-size:12px; text-align:right; font-variant-numeric:tabular-nums}
+  .mdens .dot{display:inline-block; width:8px;height:8px;border-radius:50%; margin-right:5px; vertical-align:middle}
+  .spark{display:flex; align-items:flex-end; gap:2px; height:22px; justify-content:flex-end}
+  .spark i{width:4px; background:var(--faint); border-radius:1px}
+  .spark i.up{background:var(--secure)} .spark i.dn{background:var(--misc)}
+
+  /* misconception hotspots */
+  .hot{display:flex; flex-direction:column}
+  .hotrow{display:grid; grid-template-columns:auto 1fr auto; gap:12px; align-items:center; padding:12px 0;
+    border-top:1px solid var(--line-2)}
+  .hotrow:first-child{border-top:0}
+  .hotrow .rk{font-family:var(--disp); transform:skewX(-6deg); font-size:22px; color:var(--misc); width:26px; text-align:center}
+  .hotrow .txt .st{font-size:13.5px; font-weight:600; line-height:1.3}
+  .hotrow .txt .st .m{font-family:var(--mono); color:color-mix(in oklab,var(--gold) 55%,var(--text)); padding:0 .1em}
+  .hotrow .txt .meta{font-size:11px; color:var(--muted); margin-top:4px; display:flex; gap:8px; align-items:center; flex-wrap:wrap}
+  .tag{font-size:10px; padding:2px 7px; border-radius:999px; border:1px solid var(--line); color:var(--muted); letter-spacing:.05em}
+  .hotrow .cnt{text-align:right; min-width:96px}
+  .hotrow .cnt .n{font-family:var(--disp); transform:skewX(-6deg); font-size:24px; color:var(--misc)}
+  .hotrow .cnt .p{font-family:var(--mono); font-size:11px; color:var(--muted)}
+  .sevbar{grid-column:1 / -1; height:4px; border-radius:2px; background:var(--surface3); overflow:hidden; margin-top:2px}
+  .sevbar i{display:block; height:100%; background:var(--misc)}
+
+  /* roster */
+  .rsearch{margin:0 16px 10px; display:flex; align-items:center; gap:8px; border:1px solid var(--line); border-radius:10px;
+    background:var(--surface2); padding:8px 11px}
+  .rsearch input{flex:1; background:transparent; border:0; color:var(--text); font-family:var(--body); font-size:13px; outline:none}
+  .rsearch span{color:var(--faint); font-size:13px}
+  .roster{max-height:520px; overflow-y:auto; padding:0 8px 8px}
+  .stu{display:grid; grid-template-columns:auto 1fr auto; gap:11px; align-items:center; width:100%; text-align:left;
+    cursor:pointer; border:1px solid transparent; background:transparent; color:var(--text);
+    border-radius:11px; padding:9px 8px; position:relative}
+  .stu:hover{background:var(--surface3)}
+  .stu[aria-current="true"]{background:var(--surface3); border-color:color-mix(in oklab,var(--gold) 40%,var(--line))}
+  .stu .strip{position:absolute; left:0; top:8px; bottom:8px; width:3px; border-radius:2px; background:var(--sc,var(--faint))}
+  .stu.s-secure{--sc:var(--secure)} .stu.s-fragile{--sc:var(--fragile)} .stu.s-misc{--sc:var(--misc)} .stu.s-low{--sc:var(--faint)}
+  .stu .ava{width:34px;height:34px;border-radius:9px; display:grid; place-items:center; font-family:var(--disp); transform:skewX(-6deg);
+    font-size:13px; color:#0b0b12; flex:none; margin-left:6px}
+  .stu .info{min-width:0}
+  .stu .code{font-size:12.5px; font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+  .stu .fp{display:flex; align-items:flex-end; gap:2px; height:16px; margin-top:4px}
+  .stu .fp i{width:4px; border-radius:1px; background:var(--faint)}
+  .stu .chip{font-size:9.5px; padding:3px 7px; border-radius:999px; letter-spacing:.06em; text-transform:uppercase; white-space:nowrap;
+    border:1px solid var(--cl,var(--line)); color:var(--ct,var(--muted))}
+  .chip.c-secure{--cl:color-mix(in oklab,var(--secure) 45%,var(--line)); --ct:var(--secure)}
+  .chip.c-fragile{--cl:color-mix(in oklab,var(--fragile) 45%,var(--line)); --ct:var(--fragile)}
+  .chip.c-misc{--cl:color-mix(in oklab,var(--misc) 50%,var(--line)); --ct:var(--misc)}
+  .chip.c-low{--cl:var(--line); --ct:var(--faint)}
+
+  /* student detail */
+  .detail .phead .code{font-family:var(--mono); font-size:13px; color:var(--muted); margin-left:auto}
+  .dgrid{display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:14px}
+  .cellp{border:1px solid var(--line); border-radius:11px; padding:11px 12px; background:var(--surface2); position:relative; overflow:hidden}
+  .cellp .stripe{position:absolute; left:0; top:0; bottom:0; width:4px; background:var(--cc)}
+  .cellp .n{font-family:var(--disp); transform:skewX(-6deg); font-size:26px; color:var(--cc); line-height:1}
+  .cellp .l{font-size:10px; letter-spacing:.08em; text-transform:uppercase; color:var(--muted); margin-top:3px}
+  .cellp.secure{--cc:var(--secure)} .cellp.fragile{--cc:var(--fragile)} .cellp.gap{--cc:var(--gap)} .cellp.misc{--cc:var(--misc)}
+  .dlabel{font-size:10.5px; letter-spacing:.14em; text-transform:uppercase; color:var(--muted); margin:14px 0 8px}
+  .calib{height:30px; border-radius:8px; background:var(--surface2); border:1px solid var(--line-2); position:relative; overflow:hidden}
+  .calib .mid{position:absolute; left:50%; top:0; bottom:0; width:1px; background:var(--line)}
+  .calib .fillc{position:absolute; top:6px; bottom:6px; border-radius:4px}
+  .calib .lbl{position:absolute; top:50%; transform:translateY(-50%); font-family:var(--mono); font-size:10px; color:var(--text)}
+  .calib-ends{display:flex; justify-content:space-between; font-size:9.5px; color:var(--faint); letter-spacing:.1em; text-transform:uppercase; margin-top:5px}
+  .dfp{display:grid; grid-template-columns:1fr; gap:5px}
+  .dfp .r{display:grid; grid-template-columns:96px 1fr auto; gap:9px; align-items:center; font-size:11.5px}
+  .dfp .r .bb{height:8px; border-radius:4px; background:var(--surface2); overflow:hidden; border:1px solid var(--line-2)}
+  .dfp .r .bb i{display:block;height:100%; background:linear-gradient(90deg,var(--misc),var(--fragile) 55%,var(--secure))}
+  .dfp .r .pc{font-family:var(--mono); color:var(--muted); font-size:10.5px}
+  .dq{display:flex; gap:10px; margin-top:14px; flex-wrap:wrap}
+  .dq .q{flex:1; min-width:130px; border:1px solid var(--line); border-radius:10px; padding:9px 11px; background:var(--surface2)}
+  .dq .q .l{font-size:9.5px; letter-spacing:.1em; text-transform:uppercase; color:var(--faint)}
+  .dq .q .v{font-family:var(--mono); font-size:15px; margin-top:3px}
+  .dq .q .v.ok{color:var(--secure)} .dq .q .v.bad{color:var(--misc)}
+
+  .foot{margin-top:24px; text-align:center; font-size:11px; color:var(--faint); line-height:1.6; letter-spacing:.03em}
+  .foot b{color:var(--muted); font-weight:600}
+  ::-webkit-scrollbar{width:10px} ::-webkit-scrollbar-thumb{background:var(--line); border-radius:6px}
+  *:focus-visible{outline:2px solid var(--gold); outline-offset:2px}
+  @media (prefers-reduced-motion:reduce){*{transition-duration:.001ms!important}}
+</style>
+
+<div class="wrap">
+  <header class="top">
+    <div class="brand"><span class="logo">HYPERION</span><span class="sub">Teacher Console</span></div>
+    <div class="spacer"></div>
+    <div class="roles" role="tablist" aria-label="Teacher role">
+      <button class="role" id="roleClass" role="tab" aria-selected="true"><span class="g"></span>Class teacher</button>
+      <button class="role" id="roleSubject" role="tab" aria-selected="false"><span class="g"></span>Subject teacher</button>
+    </div>
+    <button class="iconbtn" id="themeBtn" title="Toggle theme" aria-label="Toggle light / dark">◐</button>
+  </header>
+
+  <div class="scope">
+    <span class="who" id="scopeWho">Class 7 · Section B</span>
+    <span class="desc" id="scopeDesc"></span>
+    <div class="secfilter" id="secFilter" aria-label="Filter sections">
+      <button class="sc" data-sec="A" aria-pressed="true">7A</button>
+      <button class="sc" data-sec="B" aria-pressed="true">7B</button>
+      <button class="sc" data-sec="C" aria-pressed="true">7C</button>
+    </div>
+  </div>
+
+  <div class="kpis" id="kpis"></div>
+
+  <div class="grid">
+    <div class="col">
+      <section class="panel">
+        <div class="phead"><h2 id="heatTitle">Concept mastery — class map</h2>
+          <span class="hint">mastery · misconception density · 5-week trend</span></div>
+        <div class="pbody">
+          <div class="heat" id="heat">
+            <div class="hrow head"><span>Concept</span><span>Class mastery</span><span style="text-align:right">Misc.</span><span style="text-align:right">Trend</span></div>
+          </div>
+        </div>
+      </section>
+
+      <section class="panel">
+        <div class="phead"><h2>Misconception hotspots</h2>
+          <span class="hint">confident-wrong clusters — the priority signal</span></div>
+        <div class="pbody"><div class="hot" id="hot"></div></div>
+      </section>
+    </div>
+
+    <div class="col">
+      <section class="panel">
+        <div class="phead"><h2>Roster</h2><span class="hint" id="rosterCount"></span></div>
+        <div class="rsearch"><span aria-hidden="true">⌕</span>
+          <input type="search" id="search" placeholder="Find a student code…" aria-label="Search students"></div>
+        <div class="roster" id="roster" role="listbox" aria-label="Students"></div>
+      </section>
+
+      <section class="panel detail" id="detail">
+        <div class="phead"><h2>Student</h2><span class="code" id="dCode">—</span></div>
+        <div class="pbody" id="detailBody"></div>
+      </section>
+    </div>
+  </div>
+
+  <p class="foot">
+    Access is <b>role-scoped</b>: a class teacher sees every student in their section; a subject teacher sees their subject across the sections they teach — both class-wise, sliced differently.
+    All identities are <b>anonymous codes</b> (no names, no PII). Figures shown are the <b>signed diagnostic</b> — the honest instrument, never the game XP.
+  </p>
+</div>
+
+<script>
+(function(){
+  "use strict";
+  function mulberry32(a){return function(){a|=0;a=a+0x6D2B79F5|0;var t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296;};}
+  function clamp(x,a,b){return Math.max(a,Math.min(b,x));}
+
+  var CONCEPTS=['Integers','Fractions','Ratio & %','Algebra','Equations','Exponents','Lines & Angles','Triangles','Mensuration','Data Handling'];
+  var ANIMALS=['KESTREL','FALCON','OTTER','LYNX','MOTH','HERON','VIPER','CRANE','SABLE','WREN','ORYX','TERN','IBIS','MERLIN','FINCH','ROOK','ASP','EWE','GULL','HARE','JAY','KITE','LARK','MOLE','NEWT','OWL','PIKE','QUAIL'];
+  var COLORS=['var(--brand)','var(--r-a,#D65AA0)','var(--gap)','var(--secure)','var(--fragile)','var(--gold)'];
+
+  function makeStudents(section,n,seed){
+    var rnd=mulberry32(seed); var out=[];
+    for(var i=0;i<n;i++){
+      var ability=clamp(0.3+rnd()*0.62+ (rnd()-0.5)*0.1,0.18,0.97);
+      var cal=(rnd()-0.35)*0.6; // >0 overconfident
+      var attempted=10+Math.floor(rnd()*3);
+      var completion=clamp(0.62+rnd()*0.4,0.5,1);
+      var invalid=clamp((rnd()*rnd())*0.4,0,0.42);
+      var correct=Math.round(ability*attempted);
+      var wrong=attempted-correct;
+      var secShare=clamp(0.35+ability*0.6 - Math.max(0,-cal)*0.5,0.1,0.95);
+      var secure=Math.round(correct*secShare); var fragile=correct-secure;
+      var wrongConf=clamp(0.28+cal*1.4,0.05,0.92);
+      var misc=Math.round(wrong*wrongConf); var gap=wrong-misc;
+      // concept vector
+      var vec=[]; for(var c=0;c<10;c++){ vec.push(clamp(ability+(rnd()-0.5)*0.4,0.05,0.99)); }
+      var name=ANIMALS[i%ANIMALS.length]+'·'+(1+Math.floor(rnd()*9))+section;
+      var av=name.slice(0,1)+ (1+Math.floor(rnd()*9));
+      out.push({code:name, av:av, avc:COLORS[i%COLORS.length], section:section,
+        ability:ability, cal:cal, attempted:attempted, completion:completion, invalid:invalid,
+        cells:{SECURE:secure,FRAGILE:fragile,GAP:gap,MISCONCEPTION:misc}, vec:vec,
+        sbar: clamp((ability*1.7-0.72) - Math.max(0,cal)*0.5, -0.6, 0.98)});
+    }
+    return out;
+  }
+  var SECTIONS={A:makeStudents('A',24,101), B:makeStudents('B',22,202), C:makeStudents('C',20,303)};
+  var ALL=SECTIONS.A.concat(SECTIONS.B,SECTIONS.C);
+
+  var HOTSPOTS=[
+    {st:'The product of two negative integers is <b>negative</b>.', c:'Integers', rate:0.41},
+    {st:'<span class="m">2³</span> means <span class="m">2 × 3</span>.', c:'Exponents', rate:0.38},
+    {st:'Doubling the side of a square <b>doubles</b> its area.', c:'Mensuration', rate:0.34},
+    {st:'<span class="m">½ + ⅓ = ⅖</span>.', c:'Fractions', rate:0.29},
+    {st:'<span class="m">2x</span> and <span class="m">2</span> are <b>like terms</b>.', c:'Algebra', rate:0.24},
+    {st:'The perimeter of a rectangle is <b>length × breadth</b>.', c:'Mensuration', rate:0.19},
+    {st:'A triangle can have <b>two right angles</b>.', c:'Triangles', rate:0.14}
+  ];
+
+  var state={role:'class', secs:{A:true,B:true,C:true}, selected:null, query:''};
+  var $=function(id){return document.getElementById(id);};
+
+  function cohort(){
+    if(state.role==='class') return SECTIONS.B.slice();
+    return ALL.filter(function(s){return state.secs[s.section];});
+  }
+  function fmtPct(x){return Math.round(x*100);}
+  function statusOf(s){
+    var att=s.attempted; var m=s.cells.MISCONCEPTION/att; var fr=s.cells.FRAGILE/att;
+    if(s.invalid>0.28 || s.completion<0.62) return 'low';
+    if(m>=0.22) return 'misc';
+    if(fr>=0.34) return 'fragile';
+    return 'secure';
+  }
+  var STATUSLABEL={secure:'On track',fragile:'Fragile',misc:'Misconception',low:'Low data'};
+
+  /* ---- KPIs ---- */
+  function renderKPIs(){
+    var C=cohort(); var n=C.length;
+    var att=0,misc=0,inval=0,comp=0,sbar=0;
+    C.forEach(function(s){att+=s.attempted; misc+=s.cells.MISCONCEPTION; inval+=s.invalid; comp+=s.completion; sbar+=s.sbar;});
+    var miscD=misc/att, invD=inval/n, compD=comp/n, sbarD=sbar/n;
+    var flagged=C.filter(function(s){return statusOf(s)==='misc';}).length;
+    var el=$('kpis');
+    function tile(cls,l,v,u){return '<div class="kpi '+cls+'"><div class="stripe"></div><div class="l">'+l+'</div><div class="v">'+v+'</div><div class="u">'+u+'</div></div>';}
+    el.innerHTML=
+      tile('info','Students assessed', n, (state.role==='class'?'Section B':activeSecs().join(' · '))+' · Maths')+
+      tile( sbarD>0.4?'good':(sbarD>0?'warn':'bad'), 'Calibrated proficiency', (sbarD>=0?'+':'')+sbarD.toFixed(2), 'mean signed score s̄ (−1…+1)')+
+      tile( miscD>0.22?'bad':(miscD>0.14?'warn':'good'), 'Misconception density', fmtPct(miscD)+'<small>%</small>', 'confident-wrong responses')+
+      tile( flagged>n*0.25?'bad':'warn', 'Need attention', flagged, 'flagged hardened misconceptions')+
+      tile( invD>0.2?'warn':'good', 'Data quality', (100-fmtPct(invD))+'<small>%</small>', 'valid response-time share');
+  }
+  function activeSecs(){return ['A','B','C'].filter(function(k){return state.secs[k];}).map(function(k){return '7'+k;});}
+
+  /* ---- concept heatmap ---- */
+  function renderHeat(){
+    var C=cohort(); var el=$('heat');
+    el.querySelectorAll('.hrow:not(.head)').forEach(function(n){n.remove();});
+    var rnd=mulberry32(state.role==='class'?77:88);
+    CONCEPTS.forEach(function(cn,ci){
+      var m=0; C.forEach(function(s){m+=s.vec[ci];}); m/=C.length;
+      var dens=clamp((1-m)*0.55 + (rnd()-0.5)*0.08, 0.02, 0.6);
+      var dcol = dens>0.3?'var(--misc)':(dens>0.16?'var(--fragile)':'var(--secure)');
+      // sparkline 5 weeks trending toward m
+      var spark=''; var base=clamp(m-0.18-rnd()*0.1,0.05,1); var prev=0;
+      for(var w=0;w<5;w++){ var v=clamp(base+(m-base)*(w/4)+(rnd()-0.5)*0.06,0.05,1);
+        var cls=w>0&&v>=prev?'up':'dn'; prev=v; spark+='<i class="'+cls+'" style="height:'+(20*v+4)+'%"></i>'; }
+      var row=document.createElement('div'); row.className='hrow';
+      row.innerHTML='<div class="cname"><span class="sq"></span>'+cn+'</div>'+
+        '<div class="mbar"><i style="width:'+fmtPct(m)+'%"></i><b>'+fmtPct(m)+'%</b></div>'+
+        '<div class="mdens"><span class="dot" style="background:'+dcol+'"></span>'+fmtPct(dens)+'%</div>'+
+        '<div class="spark">'+spark+'</div>';
+      el.appendChild(row);
+    });
+  }
+
+  /* ---- hotspots ---- */
+  function renderHot(){
+    var C=cohort(); var n=C.length; var el=$('hot'); el.innerHTML='';
+    var list=HOTSPOTS.slice().sort(function(a,b){return b.rate-a.rate;});
+    list.forEach(function(h,i){
+      var cnt=Math.round(n*h.rate);
+      var d=document.createElement('div'); d.className='hotrow';
+      d.innerHTML='<div class="rk">'+(i+1)+'</div>'+
+        '<div class="txt"><div class="st">'+h.st+'</div>'+
+        '<div class="meta"><span class="tag">'+h.c+'</span><span>confidently marked the wrong way</span></div></div>'+
+        '<div class="cnt"><div class="n">'+cnt+'</div><div class="p">of '+n+' · '+fmtPct(h.rate)+'%</div></div>'+
+        '<div class="sevbar"><i style="width:'+fmtPct(h.rate)+'%"></i></div>';
+      el.appendChild(d);
+    });
+  }
+
+  /* ---- roster ---- */
+  function miniFp(s,scale){
+    var h=''; for(var i=0;i<10;i++){var v=s.vec[i]; var col=v>0.66?'var(--secure)':(v>0.4?'var(--fragile)':'var(--misc)');
+      h+='<i style="height:'+(v*100)+'%;background:'+col+'"></i>';} return h;
+  }
+  function renderRoster(){
+    var C=cohort().slice().sort(function(a,b){
+      var order={misc:0,low:1,fragile:2,secure:3}; return order[statusOf(a)]-order[statusOf(b)];});
+    if(state.query){var q=state.query.toUpperCase(); C=C.filter(function(s){return s.code.indexOf(q)>=0;});}
+    $('rosterCount').textContent=C.length+' students';
+    var el=$('roster'); el.innerHTML='';
+    if(!state.selected && C.length) state.selected=C[0].code;
+    C.forEach(function(s){
+      var st=statusOf(s);
+      var b=document.createElement('button'); b.className='stu s-'+st; b.setAttribute('role','option');
+      b.setAttribute('aria-current', s.code===state.selected?'true':'false');
+      b.innerHTML='<span class="strip"></span>'+
+        '<span class="ava" style="background:linear-gradient(160deg,'+s.avc+',color-mix(in oklab,'+s.avc+' 55%,#000))">'+s.av+'</span>'+
+        '<span class="info"><span class="code">'+s.code+(state.role==='subject'?' · 7'+s.section:'')+'</span>'+
+        '<span class="fp">'+miniFp(s)+'</span></span>'+
+        '<span class="chip c-'+st+'">'+STATUSLABEL[st]+'</span>';
+      b.addEventListener('click',function(){state.selected=s.code; renderRoster(); renderDetail();});
+      el.appendChild(b);
+    });
+    if(C.length && !C.some(function(s){return s.code===state.selected;})){state.selected=C[0].code; renderDetail();}
+  }
+
+  /* ---- detail ---- */
+  function renderDetail(){
+    var s=ALL.filter(function(x){return x.code===state.selected;})[0];
+    if(!s){$('detailBody').innerHTML='<p style="color:var(--muted);font-size:13px">Select a student.</p>'; return;}
+    $('dCode').textContent=s.code+' · 7'+s.section+' · Maths';
+    var att=s.attempted;
+    var cellDef=[['SECURE','secure'],['FRAGILE','fragile'],['GAP','gap'],['MISCONCEPTION','misc']];
+    var cells=cellDef.map(function(p){return '<div class="cellp '+p[1]+'"><div class="stripe"></div><div class="n">'+s.cells[p[0]]+'</div><div class="l">'+p[0]+'</div></div>';}).join('');
+    // calibration diverging bar around center
+    var cal=s.cal; var mag=clamp(Math.abs(cal),0,0.5)/0.5*50;
+    var over=cal>=0;
+    var fillc='left:'+(over?'50%':(50-mag)+'%')+'; width:'+mag+'%; background:'+(over?'var(--misc)':'var(--gap)')+';';
+    var calLbl=(over?'+':'')+cal.toFixed(2)+' '+(over?'overconfident':'under-confident');
+    var fp=s.vec.map(function(v,i){return '<div class="r"><span>'+CONCEPTS[i]+'</span><div class="bb"><i style="width:'+fmtPct(v)+'%"></i></div><span class="pc">'+fmtPct(v)+'</span></div>';}).join('');
+    var invOk=s.invalid<=0.2;
+    $('detailBody').innerHTML=
+      '<div class="dgrid">'+cells+'</div>'+
+      '<div class="dlabel">Calibration profile</div>'+
+      '<div class="calib"><div class="mid"></div><div class="fillc" style="'+fillc+'"></div>'+
+        '<div class="lbl" style="'+(over?'right:8px':'left:8px')+'">'+calLbl+'</div></div>'+
+      '<div class="calib-ends"><span>under-confident</span><span>calibrated</span><span>overconfident</span></div>'+
+      '<div class="dlabel">Concept fingerprint (10-D)</div><div class="dfp">'+fp+'</div>'+
+      '<div class="dq">'+
+        '<div class="q"><div class="l">Signed score s̄</div><div class="v '+(s.sbar>0.3?'ok':(s.sbar<0?'bad':''))+'">'+(s.sbar>=0?'+':'')+s.sbar.toFixed(2)+'</div></div>'+
+        '<div class="q"><div class="l">Completion</div><div class="v">'+fmtPct(s.completion)+'%</div></div>'+
+        '<div class="q"><div class="l">Valid RT</div><div class="v '+(invOk?'ok':'bad')+'">'+(100-fmtPct(s.invalid))+'%</div></div>'+
+      '</div>';
+  }
+
+  /* ---- role + scope ---- */
+  function applyRole(){
+    var isClass=state.role==='class';
+    $('roleClass').setAttribute('aria-selected', isClass?'true':'false');
+    $('roleSubject').setAttribute('aria-selected', isClass?'false':'true');
+    $('secFilter').classList.toggle('hide', isClass);
+    $('heatTitle').textContent = isClass ? 'Concept mastery — Section 7B' : 'Concept mastery — across sections';
+    if(isClass){
+      $('scopeWho').textContent='Class 7 · Section B';
+      $('scopeDesc').innerHTML='Class teacher view — <b>every student</b> in your section across the Maths diagnostic. Spot who needs attention first.';
+    } else {
+      $('scopeWho').textContent='Mathematics · Class 7';
+      $('scopeDesc').innerHTML='Subject teacher view — <b>your subject</b> across the sections you teach. Compare concept mastery and misconception spread.';
+    }
+    state.selected=null;
+    renderAll();
+  }
+  function renderAll(){renderKPIs(); renderHeat(); renderHot(); renderRoster(); renderDetail();}
+
+  $('roleClass').addEventListener('click',function(){state.role='class'; applyRole();});
+  $('roleSubject').addEventListener('click',function(){state.role='subject'; applyRole();});
+  Array.prototype.forEach.call($('secFilter').querySelectorAll('.sc'),function(b){
+    b.addEventListener('click',function(){
+      var k=b.getAttribute('data-sec'); state.secs[k]=!state.secs[k];
+      if(!state.secs.A&&!state.secs.B&&!state.secs.C){state.secs[k]=true;}
+      b.setAttribute('aria-pressed', state.secs[b.getAttribute('data-sec')]?'true':'false');
+      state.selected=null; renderAll();
+    });
+  });
+  $('search').addEventListener('input',function(e){state.query=e.target.value; renderRoster();});
+  $('themeBtn').addEventListener('click',function(){
+    var cur=document.documentElement.getAttribute('data-theme');
+    var next=cur==='light'?'dark':(cur==='dark'?'light':(window.matchMedia('(prefers-color-scheme: dark)').matches?'light':'dark'));
+    document.documentElement.setAttribute('data-theme',next);
+  });
+
+  applyRole();
+})();
+</script>

@@ -1,0 +1,167 @@
+/* HYPERION design tokens — holographic tactical interface.
+   Shared by every screen. Deep-field background, cyan/violet holo chrome,
+   status hues that carry meaning (Secure / Fragile / Gap / Misconception).
+   Everything here is self-hosted: system font stacks, CSS gradients, inline
+   SVG. No CDN, no webfont — the lab is air-gapped (plan §9). */
+
+:root {
+  color-scheme: dark;
+
+  /* --- deep field ------------------------------------------------------ */
+  --bg: #03060f; --bg2: #070c1a; --void: #01030a;
+  --panel: rgba(15, 24, 43, .82); --panel2: rgba(11, 18, 34, .9);
+  --steel: rgba(30, 45, 74, .55); --glass: rgba(120, 190, 255, .045);
+  --line: rgba(120, 200, 255, .17); --line2: rgba(120, 200, 255, .08);
+  --edge: rgba(120, 220, 255, .45);
+
+  /* --faint carries 10px uppercase labels, so it is held at AA for body text
+     against the panel rather than treated as decorative grey. */
+  --text: #E8F3FF; --muted: #90A6C6; --faint: #6B80A6; --bone: #F4FAFF;
+
+  /* --- holo accents ---------------------------------------------------- */
+  --cyan: #22E7FF; --cyan-d: #0B8FA8;
+  --violet: #A855F7; --violet-d: #6D28D9;
+  --red: #FF2D5E; --red2: #FF4D74; --blood: #A50D33;
+  --gold: #FFD34E;
+
+  /* status hues — these encode the diagnostic cells, never decoration */
+  --secure: #34F5C5; --fragile: #FFB524; --gap: #4D9FFF; --misc: #FF2D5E;
+  --admin: #A855F7; --teach: #FF9D1E;
+
+  /* rank ramp — steel (D) through the spectrum to white-gold (SSS) */
+  --r-d: #5E7796; --r-c: #22E7FF; --r-b: #6EA8FF;
+  --r-a: #A855F7; --r-s: #FF4D9E; --r-ss: #FF8A3C; --r-sss: #FFE066;
+
+  /* --- type ------------------------------------------------------------ */
+  --disp: "Bahnschrift","DIN Alternate","Haettenschweiler","Impact",
+          "Franklin Gothic Bold","Arial Narrow Bold",system-ui,sans-serif;
+  --body: system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  --mono: ui-monospace,"Cascadia Mono","SF Mono","Consolas","Roboto Mono",monospace;
+
+  /* --- effects --------------------------------------------------------- */
+  --shadow: 0 30px 70px -40px #000, 0 0 0 1px var(--line2);
+  --glow-cyan: 0 0 24px color-mix(in oklab, var(--cyan) 45%, transparent);
+  --sheen: linear-gradient(180deg, rgba(180,235,255,.14), transparent 42%);
+  --ease: cubic-bezier(.2,.9,.25,1);
+  --fill-secure: var(--secure); --fill-fragile: var(--fragile); --fill-misc: var(--misc);
+}
+
+/* Daylight holo — same instrument under lab lighting. The status hues are
+   used as *text*, so they are darkened here to hold contrast on white; the
+   separate --fill-* tokens stay vivid because they only ever paint bars. */
+:root[data-theme="light"] {
+  color-scheme: light;
+  --bg: #dfe6f2; --bg2: #eef2f9; --void: #ffffff;
+  --panel: rgba(255,255,255,.92); --panel2: rgba(243,247,253,.95);
+  --steel: rgba(24,45,80,.07); --glass: rgba(20,60,120,.03);
+  --line: rgba(20,50,95,.16); --line2: rgba(20,50,95,.07);
+  --edge: rgba(20,90,150,.35);
+  --text: #0A1626; --muted: #4A5C78; --faint: #65748D; --bone: #0A1626;
+
+  --cyan: #07788F; --violet: #6D28D9;
+  --red: #C8102E; --red2: #C8102E; --blood: #8C0722;
+  --gold: #8A6200;
+  --secure: #06805A; --fragile: #8F5A00; --gap: #14589E; --misc: #C8102E;
+  --admin: #6D28D9; --teach: #9A5200;
+  --r-d: #4A5C78; --r-c: #07788F; --r-b: #2E63C0;
+  --r-a: #7A2DBF; --r-s: #C01F6A; --r-ss: #B45309; --r-sss: #8A6200;
+
+  --shadow: 0 24px 54px -38px rgba(20,40,80,.55), 0 0 0 1px var(--line2);
+  --glow-cyan: 0 0 20px color-mix(in oklab, var(--cyan) 22%, transparent);
+  --sheen: linear-gradient(180deg, rgba(255,255,255,.75), transparent 46%);
+  --fill-secure: #12B888; --fill-fragile: #E09400; --fill-misc: #E8203F;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0; color: var(--text); font-family: var(--body); line-height: 1.5;
+  -webkit-font-smoothing: antialiased; min-height: 100vh;
+  background-color: var(--bg);
+  background-image:
+    /* two drifting light sources */
+    radial-gradient(900px 560px at 82% -14%, color-mix(in oklab, var(--violet) 30%, transparent), transparent 62%),
+    radial-gradient(760px 520px at 8% 104%, color-mix(in oklab, var(--cyan) 22%, transparent), transparent 60%),
+    /* the field grid — the signature of the interface */
+    linear-gradient(var(--line2) 1px, transparent 1px),
+    linear-gradient(90deg, var(--line2) 1px, transparent 1px),
+    linear-gradient(var(--bg2), var(--bg));
+  background-size: 100% 100%, 100% 100%, 44px 44px, 44px 44px, 100% 100%;
+  background-attachment: fixed;
+}
+:root[data-theme="light"] body { background-image:
+    radial-gradient(900px 560px at 82% -14%, color-mix(in oklab, var(--violet) 12%, transparent), transparent 62%),
+    radial-gradient(760px 520px at 8% 104%, color-mix(in oklab, var(--cyan) 12%, transparent), transparent 60%),
+    linear-gradient(var(--line2) 1px, transparent 1px),
+    linear-gradient(90deg, var(--line2) 1px, transparent 1px),
+    linear-gradient(var(--bg2), var(--bg)); }
+
+/* --- shared primitives ----------------------------------------------- */
+
+.disp { font-family: var(--disp); text-transform: uppercase; letter-spacing: .04em; }
+.mono { font-family: var(--mono); font-variant-numeric: tabular-nums; }
+a { color: var(--cyan); }
+
+/* a math fragment inside a statement */
+.mfrag {
+  font-family: var(--mono); font-weight: 700; color: var(--cyan);
+  padding: .05em .3em; border-radius: 3px;
+  background: color-mix(in oklab, var(--cyan) 12%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--cyan) 22%, transparent);
+}
+
+/* Holo panel: glass surface, hairline edge, light catching the top edge.
+   Applied by the screen stylesheets to their own panel classes. */
+.holo {
+  position: relative; background: var(--panel); border: 1px solid var(--line);
+  box-shadow: var(--shadow); backdrop-filter: blur(9px) saturate(1.15);
+}
+.holo::before {
+  content: ""; position: absolute; inset: 0; pointer-events: none;
+  background: var(--sheen);
+}
+
+/* Corner brackets — the tactical-readout tell. Drawn as background layers so
+   they never collide with a component's own pseudo-elements. */
+.brackets {
+  --bk: 15px; --bkc: var(--edge);
+  background-image:
+    linear-gradient(90deg, var(--bkc) 0 var(--bk), transparent var(--bk)),
+    linear-gradient(180deg, var(--bkc) 0 var(--bk), transparent var(--bk)),
+    linear-gradient(270deg, var(--bkc) 0 var(--bk), transparent var(--bk)),
+    linear-gradient(180deg, var(--bkc) 0 var(--bk), transparent var(--bk)),
+    linear-gradient(90deg, var(--bkc) 0 var(--bk), transparent var(--bk)),
+    linear-gradient(0deg, var(--bkc) 0 var(--bk), transparent var(--bk)),
+    linear-gradient(270deg, var(--bkc) 0 var(--bk), transparent var(--bk)),
+    linear-gradient(0deg, var(--bkc) 0 var(--bk), transparent var(--bk));
+  background-size: 100% 1px, 1px 100%, 100% 1px, 1px 100%,
+                   100% 1px, 1px 100%, 100% 1px, 1px 100%;
+  background-position: left top, left top, right top, right top,
+                       left bottom, left bottom, right bottom, right bottom;
+  background-repeat: no-repeat;
+}
+
+/* Energy bar: a segmented track that reads as charge, not as a progress bar. */
+.energy { position: relative; overflow: hidden; background: var(--steel);
+  box-shadow: inset 0 0 0 1px var(--line2); }
+.energy > i {
+  display: block; height: 100%; width: 0; background: var(--ec, var(--cyan));
+  box-shadow: 0 0 12px var(--ec, var(--cyan)); transition: width .45s var(--ease);
+}
+/* the notches that make a bar look like a power cell */
+.energy::after {
+  content: ""; position: absolute; inset: 0; pointer-events: none;
+  background: repeating-linear-gradient(90deg, transparent 0 7px, color-mix(in oklab, var(--void) 55%, transparent) 7px 9px);
+}
+
+*:focus-visible { outline: 2px solid var(--cyan); outline-offset: 2px; }
+
+/* --- motion ------------------------------------------------------------ */
+@keyframes hxSweep { 0% { transform: translateY(-100%); } 100% { transform: translateY(100%); } }
+@keyframes hxPulseGlow { 50% { filter: brightness(1.35); } }
+@keyframes hxFloat { 50% { transform: translateY(-3px); } }
+
+@media (prefers-reduced-motion: reduce) {
+  * { animation-duration: .001ms !important; animation-iteration-count: 1 !important;
+      transition-duration: .001ms !important; scroll-behavior: auto !important; }
+}
