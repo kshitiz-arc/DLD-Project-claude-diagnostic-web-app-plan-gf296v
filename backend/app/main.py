@@ -316,7 +316,7 @@ def submit_response(body: ResponseIn, db: DbSession = Depends(get_session)):
     try:
         opt = Opt(body.response_option)
     except ValueError:
-        raise HTTPException(400, "response_option must be one of AT/ST/SF/AF")
+        raise HTTPException(400, "response_option must be one of AT/MT/ST/SF/MF/AF")
 
     # The RT floor is per item (plan §5.4): a long statement needs longer to
     # read before an answer can be called engaged.
@@ -834,7 +834,6 @@ def lan_page(port: Optional[int] = Query(default=None)):
  <p class="url">{urls[0]}</p>
  <div class="qr">{qr}</div>
  {f"<ul><li>other addresses on this machine:</li>{alts}</ul>" if alts else ""}
- <p class="hint">Same Wi-Fi hotspot or same LAN switch. No internet needed.</p>
 </div></body></html>"""
 
 

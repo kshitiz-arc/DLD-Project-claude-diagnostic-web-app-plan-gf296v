@@ -89,11 +89,16 @@ def seed_demo(session: Session, sections=("A", "B", "C"), per_section=8) -> None
                 # this is what a reification gap looks like in synthetic data.
                 p_correct = ability * (0.72 if it.form == "perturbed" else 1.0)
                 correct = rng.random() < p_correct
-                confident = rng.random() < (0.4 + ability * 0.4 + max(0.0, over))
-                if correct:
-                    opt = (Opt.AT if it.ground_truth else Opt.AF) if confident else (Opt.ST if it.ground_truth else Opt.SF)
-                else:
-                    opt = (Opt.AF if it.ground_truth else Opt.AT) if confident else (Opt.SF if it.ground_truth else Opt.ST)
+                # Six-point scale: pick a band (sure / mostly / maybe) rather
+                # than a bare confident flag, so the synthetic cohort exercises
+                # the same resolution a real sitting produces.
+                conf = 0.4 + ability * 0.4 + max(0.0, over)
+                roll = rng.random()
+                band = 3 if roll < conf * 0.55 else (2 if roll < conf else 1)
+                true_side = [Opt.ST, Opt.MT, Opt.AT]      # band 1..3 toward TRUE
+                false_side = [Opt.SF, Opt.MF, Opt.AF]     # band 1..3 toward FALSE
+                says_true = correct == it.ground_truth
+                opt = (true_side if says_true else false_side)[band - 1]
                 rt = rng.randint(400, 9000)
                 scored = score_response(opt, it.ground_truth, rt, t_min_ms=it.min_read_ms)
                 row = Response(

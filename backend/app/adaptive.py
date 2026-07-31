@@ -3,6 +3,15 @@
 The goal is to reduce uncertainty on the concept-mastery vector *efficiently*,
 sampling more where misconceptions appear:
 
+  0. An **opening block** of the hardest available items, one per concept, runs
+     before adaptivity engages. This is a deliberate override: it front-loads
+     difficulty while the child is freshest, and a hard item discriminates
+     better than an easy one because almost everybody clears an easy item, so
+     it moves no posterior. The cost is that the first few items are chosen
+     without regard to uncertainty, and misconception probes are deferred until
+     the block is done — they are not lost, since the responses still record
+     their cells and the variance rule picks those concepts up immediately
+     after. Set ``HYPERION_OPENING_HARD=0`` to disable and go fully adaptive.
   1. A fresh **Misconception** (confident-wrong) triggers *probe-deeper*. The
      probe escalates in order of diagnostic value:
        a. the **perturbed twin** of the item just missed — does the structure
@@ -42,8 +51,13 @@ from .models import Item, Response
 # the fingerprint stays broad. All [assumption — tunable], env-overridable so
 # a pilot can be re-tuned without a redeploy.
 VARIANCE_STOP = float(os.environ.get("HYPERION_VARIANCE_STOP", "0.02"))
-SESSION_CAP = int(os.environ.get("HYPERION_SESSION_CAP", "12"))
-CONCEPT_CAP = int(os.environ.get("HYPERION_CONCEPT_CAP", "3"))
+SESSION_CAP = int(os.environ.get("HYPERION_SESSION_CAP", "30"))
+# 10 strands x 4 = 40 reachable, so a 30-item sitting is not starved by the
+# per-concept budget. At CONCEPT_CAP=3 the ceiling is exactly 30 and every
+# concept would have to max out to get there, which never happens in practice.
+CONCEPT_CAP = int(os.environ.get("HYPERION_CONCEPT_CAP", "4"))
+# Items served hardest-first across distinct concepts before adaptivity starts.
+OPENING_HARD = int(os.environ.get("HYPERION_OPENING_HARD", "6"))
 
 STOP_CAP = "cap"
 STOP_CONVERGED = "converged"
@@ -95,6 +109,7 @@ def select_next(
     *,
     session_cap: int = SESSION_CAP,
     concept_cap: int = CONCEPT_CAP,
+    opening_hard: int = OPENING_HARD,
 ) -> Selection:
     """Choose the next item, or stop the session with a recorded reason."""
     if len(responses) >= session_cap:
@@ -111,6 +126,16 @@ def select_next(
 
     def uncertainty(strand: str) -> float:
         return betas[strand].variance if strand in betas else BetaBernoulli().variance
+
+    # 0) opening block: hardest first, breadth before depth. Sorting on the
+    #    served count first guarantees a fresh concept every time while any
+    #    remain, so six opening items means six different concepts.
+    if len(responses) < opening_hard:
+        opening = sorted(
+            remaining,
+            key=lambda it: (served_per_concept[it.strand], -it.difficulty, it.id or 0),
+        )
+        return Selection(opening[0], False, "")
 
     # 1) misconception-triggered deeper probe (twin -> sibling -> concept)
     if responses and responses[-1].diagnostic_cell == "MISCONCEPTION":

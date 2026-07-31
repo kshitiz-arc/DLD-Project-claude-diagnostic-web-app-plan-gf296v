@@ -5,6 +5,7 @@
 .gate { max-width: 560px; margin: 0 auto; padding: clamp(20px,5vh,40px) clamp(12px,4vw,16px) 50px; }
 
 .ghdr { text-align: center; margin-bottom: clamp(18px,3vh,26px); }
+
 .glogo { font-family: var(--disp); font-size: clamp(32px,8vw,44px); line-height: 1; color: var(--bone);
   letter-spacing: .14em; text-transform: uppercase;
   text-shadow: 0 0 30px color-mix(in oklab, var(--cyan) 55%, transparent); }
@@ -24,6 +25,20 @@
 .gt { margin: 0 0 6px; font-family: var(--disp); font-size: clamp(22px,5.5vw,28px); letter-spacing: .09em;
   text-transform: uppercase; }
 .gd { margin: 0 0 20px; font-size: 13.5px; line-height: 1.6; color: var(--muted); max-width: 48ch; }
+
+/* ── the role step's hero row ──────────────────────────────────────────────
+   "Who's arriving?" runs to roughly half the panel width, leaving a wide gap
+   to its right; the bat perches there. The text column carries min-width: 0
+   so the flex item can actually shrink — without it the paragraph's content
+   sets a floor and pushes the bat out of the panel. */
+.ghero { display: flex; align-items: center; gap: clamp(10px, 3vw, 22px); margin-bottom: 20px; }
+.ghero-tx { flex: 1; min-width: 0; }
+.ghero-tx .gd { margin-bottom: 0; }   /* the row owns the spacing now */
+.ghero .pbat-wrap { flex: none; --s: 1.5; }
+
+/* Below ~520px the paragraph needs the width back more than the bat does. */
+@media (max-width: 520px) { .ghero .pbat-wrap { --s: 1.1; } }
+@media (max-width: 400px) { .ghero { gap: 8px; } .ghero .pbat-wrap { --s: .9; } }
 
 /* ── role cards ────────────────────────────────────────────────────────── */
 .roles { display: grid; gap: 12px; }
@@ -126,5 +141,3 @@
   .tid .scope { flex-basis: 100%; }
 }
 
-.gfoot { margin-top: 22px; font-size: 11px; color: var(--faint); text-align: center; line-height: 1.7;
-  max-width: 52ch; margin-inline: auto; }

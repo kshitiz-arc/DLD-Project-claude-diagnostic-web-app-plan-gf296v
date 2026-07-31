@@ -14,13 +14,17 @@ import type { ResponseOption } from "../scoring";
 const PRACTICE = "A square has [four] equal sides.";
 
 const BINS: { r: ResponseOption; cls: string; icon: string; flip: boolean; label: string; sub: string; gloss: string }[] = [
-  { r: "AF", cls: "f far", icon: "s-chev2", flip: false, label: "Always False", sub: "Sure",
+  { r: "AF", cls: "f far", icon: "s-chev3", flip: false, label: "Always False", sub: "Sure",
     gloss: "You're sure it's wrong." },
+  { r: "MF", cls: "f mid", icon: "s-chev2", flip: false, label: "Mostly False", sub: "Fairly sure",
+    gloss: "You think it's wrong and you'd back that — just not your whole pocket money." },
   { r: "SF", cls: "f", icon: "s-chev1", flip: false, label: "Maybe False", sub: "Unsure",
     gloss: "You lean towards wrong, but you'd not bet on it." },
   { r: "ST", cls: "t", icon: "s-chev1", flip: true, label: "Maybe True", sub: "Unsure",
     gloss: "You lean towards right, but you'd not bet on it." },
-  { r: "AT", cls: "t far", icon: "s-chev2", flip: true, label: "Always True", sub: "Sure",
+  { r: "MT", cls: "t mid", icon: "s-chev2", flip: true, label: "Mostly True", sub: "Fairly sure",
+    gloss: "You think it's right and you'd back that — just not your whole pocket money." },
+  { r: "AT", cls: "t far", icon: "s-chev3", flip: true, label: "Always True", sub: "Sure",
     gloss: "You're sure it's right." },
 ];
 

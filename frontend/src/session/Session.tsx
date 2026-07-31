@@ -22,13 +22,16 @@ const CELLMETA: Record<DiagnosticCell, { color: string; icon: string; sub: strin
   MISCONCEPTION: { color: "var(--misc)", icon: "s-misc", sub: "confidently off — flagged" },
 };
 
-// Ordered as a continuum of p̂: 0.075 → 0.30 → 0.70 → 0.925. `far` marks the
-// confident ends, which sit taller because they are further from p̂ = 0.5.
+// Ordered as a continuum of p̂: 0.05 → 0.20 → 0.38 → 0.62 → 0.80 → 0.95.
+// `far`/`mid` set the height: the further a band sits from p̂ = 0.5, the taller
+// it stands, and the chevron count repeats the same claim a second way.
 const OPTS: { r: ResponseOption; cls: string; icon: string; flip: boolean; label: string; sub: string; key: string }[] = [
-  { r: "AF", cls: "f far", icon: "s-chev2", flip: false, label: "Always False", sub: "Sure", key: "1" },
-  { r: "SF", cls: "f", icon: "s-chev1", flip: false, label: "Maybe False", sub: "Unsure", key: "2" },
-  { r: "ST", cls: "t", icon: "s-chev1", flip: true, label: "Maybe True", sub: "Unsure", key: "3" },
-  { r: "AT", cls: "t far", icon: "s-chev2", flip: true, label: "Always True", sub: "Sure", key: "4" },
+  { r: "AF", cls: "f far", icon: "s-chev3", flip: false, label: "Always False", sub: "Sure", key: "1" },
+  { r: "MF", cls: "f mid", icon: "s-chev2", flip: false, label: "Mostly False", sub: "Fairly sure", key: "2" },
+  { r: "SF", cls: "f", icon: "s-chev1", flip: false, label: "Maybe False", sub: "Unsure", key: "3" },
+  { r: "ST", cls: "t", icon: "s-chev1", flip: true, label: "Maybe True", sub: "Unsure", key: "4" },
+  { r: "MT", cls: "t mid", icon: "s-chev2", flip: true, label: "Mostly True", sub: "Fairly sure", key: "5" },
+  { r: "AT", cls: "t far", icon: "s-chev3", flip: true, label: "Always True", sub: "Sure", key: "6" },
 ];
 const BOARDS: { k: "calibration" | "growth" | "effort"; label: string; unit: string; blurb: string }[] = [
   { k: "calibration", label: "Calibration", unit: "% CAL",
@@ -349,7 +352,9 @@ export function Session() {
   answerRef.current = answer;
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      const map: Record<string, ResponseOption> = { "1": "AF", "2": "SF", "3": "ST", "4": "AT" };
+      const map: Record<string, ResponseOption> = {
+        "1": "AF", "2": "MF", "3": "SF", "4": "ST", "5": "MT", "6": "AT",
+      };
       if (map[e.key]) answerRef.current(map[e.key]);
       else if (e.key === "t" || e.key === "T") unleashRef.current();
     };

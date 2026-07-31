@@ -10,6 +10,7 @@ import {
   makeStudentCode,
 } from "../auth/ids";
 import type { TeacherKind } from "../auth/types";
+import { PixelBat } from "./PixelBat";
 import "./gate.css";
 
 type Step = "role" | "student" | "teacher" | "admin" | "adminConsole" | "launch";
@@ -100,15 +101,19 @@ export function Gate() {
             )}
             <p className="gd">{launch.code ? "Remember this code — it's your only way back in." : "Access is role-scoped and ready."}</p>
             <button className="btn" onClick={() => nav(launch.to)}>{launch.cta} ▸</button>
+            {/* Students get the option to loosen up first. Optional on purpose:
+                gating every sitting on a warm-up buys no measurement and taxes
+                every re-sit. Teachers and admins never see it. */}
+            {launch.to === "/session" && (
+              <button className="btn ghost" onClick={() => nav("/range")}>
+                Warm up in RANGE first
+              </button>
+            )}
             <button className="btn ghost" onClick={() => setStep("role")}>Switch user</button>
           </div>
         )}
       </div>
 
-      <p className="gfoot">
-        Data-minimised by design: students are anonymous codes (no PII), teachers are admin-issued IDs,
-        and the admin never sees a child's real identity (plan §10).
-      </p>
     </div>
   );
 }
@@ -121,9 +126,16 @@ function RoleSelect({ onPick }: { onPick: (s: Step) => void }) {
   ];
   return (
     <section>
-      <div className="eyebrow">Choose how you enter</div>
-      <h2 className="gt">Who's arriving?</h2>
-      <p className="gd">Students make their own code; teachers use an admin-issued ID; the admin issues those IDs.</p>
+      {/* The heading only fills about half the panel, so the bat perches in
+          the gap instead of the step carrying dead space. */}
+      <div className="ghero">
+        <div className="ghero-tx">
+          <div className="eyebrow">Choose how you enter</div>
+          <h2 className="gt">Who's arriving?</h2>
+          <p className="gd">Students make their own code; teachers use an admin-issued ID; the admin issues those IDs.</p>
+        </div>
+        <PixelBat />
+      </div>
       <div className="roles">
         {roles.map((r) => (
           <button key={r.key} className={`rc ${r.cls}`} onClick={() => onPick(r.key)}>

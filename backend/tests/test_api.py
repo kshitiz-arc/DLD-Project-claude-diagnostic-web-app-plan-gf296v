@@ -13,6 +13,7 @@ os.environ["HYPERION_ADMIN_PASSCODE"] = "hyperion"
 
 from fastapi.testclient import TestClient  # noqa: E402
 from sqlmodel import Session as DbSession  # noqa: E402
+from app.adaptive import SESSION_CAP
 from app.main import app  # noqa: E402
 from app.db import engine, init_db  # noqa: E402
 from app.seed import seed_concepts, seed_demo, seed_items  # noqa: E402
@@ -118,11 +119,11 @@ def test_fixed_form_is_identical_for_every_student_and_truthless():
     first, cap = run()
     second, _ = run()
     assert first == second
-    assert len(first) == cap == 12
+    assert len(first) == cap == SESSION_CAP
     # breadth first: the fixed form spans every strand before repeating one
     strands = client.get("/api/export/items.csv", headers=ADMIN).text
     assert strands  # export works; the ordering assertion is below
-    assert len(set(first)) == 12
+    assert len(set(first)) == SESSION_CAP
 
 
 def test_scoring_secure_vs_misconception():

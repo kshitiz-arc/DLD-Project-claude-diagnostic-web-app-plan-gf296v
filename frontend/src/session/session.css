@@ -112,7 +112,7 @@
 @media (min-width: 700px) { .sx-statement { max-width: 34ch; } }
 
 /* ── certainty spectrum: one connected track, not four cards ─────────── */
-.sx-spectrum { display: grid; grid-template-columns: repeat(4,1fr); align-items: end; gap: 0;
+.sx-spectrum { display: grid; grid-template-columns: repeat(6,1fr); align-items: end; gap: 0;
   border: 1px solid var(--line); border-radius: 4px; overflow: hidden;
   background: var(--panel); box-shadow: var(--shadow); }
 .sx-opt { position: relative; cursor: pointer; border: 0; border-right: 1px solid var(--line2);
@@ -120,8 +120,11 @@
   display: flex; flex-direction: column; gap: 8px; align-items: center;
   transition: background .18s var(--ease), transform .12s var(--ease); }
 .sx-opt:last-child { border-right: 0; }
-/* outer options sit taller: they are further from p̂ = 0.5 */
+/* Height encodes distance from p̂ = 0.5: hedge < fairly sure < sure. The
+   chevron count says the same thing again, so the cue survives for a child who
+   reads shape before they read text. */
 .sx-opt.far { padding-top: 27px; }
+.sx-opt.mid { padding-top: 21px; }
 /* the charge line under each option — brightens on hover, the "arming" cue */
 .sx-opt::after { content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 3px;
   background: var(--optc); opacity: .3; transition: opacity .18s, height .18s, box-shadow .18s; }
@@ -141,21 +144,33 @@
 .sx-opt.picked { background: color-mix(in oklab, var(--optc) 20%, transparent); }
 .sx-opt.picked::after { opacity: 1; height: 5px; box-shadow: 0 0 16px var(--optc); }
 
-/* Narrow screens: shrink before folding, then fold to 2x2. Reading order stays
-   left-to-right, top-to-bottom, so the false→true continuum survives the fold. */
-@media (max-width: 620px) {
+/* Narrow screens: shrink, then fold. Reading order stays left-to-right,
+   top-to-bottom at every step, so the false→true continuum survives each fold.
+   Six columns is a lot on a lab laptop, so the first fold is to 3x2 — which
+   lands all three FALSE bands on the top row and all three TRUE bands on the
+   bottom, a split that happens to read better than the flat row. */
+@media (max-width: 860px) {
   .sx-opt { padding: 12px 6px 11px; gap: 5px; }
   .sx-opt.far { padding-top: 19px; }
+  .sx-opt.mid { padding-top: 15px; }
   .sx-opt svg { width: 21px; height: 14px; }
   .sx-opt .k { font-size: 13px; letter-spacing: .04em; }
   .sx-opt .sub { font-size: 9px; letter-spacing: .1em; }
 }
+@media (max-width: 620px) {
+  .sx-spectrum { grid-template-columns: repeat(3,1fr); }
+  .sx-opt { border-bottom: 1px solid var(--line2); }
+  .sx-opt:nth-child(3n) { border-right: 0; }
+  .sx-opt:nth-child(n+4) { border-bottom: 0; }
+}
 @media (max-width: 430px) {
   .sx-spectrum { grid-template-columns: repeat(2,1fr); }
-  .sx-opt { border-bottom: 1px solid var(--line2); }
+  .sx-opt:nth-child(3n) { border-right: 1px solid var(--line2); }
   .sx-opt:nth-child(2n) { border-right: 0; }
-  .sx-opt:nth-child(n+3) { border-bottom: 0; }
-  .sx-opt.far { padding-top: 12px; }  /* the height cue can't survive a fold */
+  .sx-opt:nth-child(n+4) { border-bottom: 1px solid var(--line2); }
+  .sx-opt:nth-child(n+5) { border-bottom: 0; }
+  /* the height cue cannot survive a fold — the chevrons still carry it */
+  .sx-opt.far, .sx-opt.mid { padding-top: 12px; }
 }
 
 /* the continuum legend — says what the spectrum means, once */

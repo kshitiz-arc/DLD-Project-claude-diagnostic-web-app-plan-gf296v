@@ -64,7 +64,7 @@ class SessionNext(BaseModel):
 class ResponseIn(BaseModel):
     session_id: int
     item_id: int
-    response_option: str  # AT | ST | SF | AF
+    response_option: str  # AT | MT | ST | SF | MF | AF
     response_time_ms: float
 
 

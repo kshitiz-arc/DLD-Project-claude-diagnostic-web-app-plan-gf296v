@@ -21,8 +21,11 @@ def brier_reward(response: Response, ground_truth: bool, bands: ConfidenceBands 
         s = 1 - 2 * (p_hat - y)**2
 
     +1 == perfectly calibrated and correct; -1 == confidently, maximally wrong.
-    With the default bands this yields AT/ST/SF/AF -> +0.99/+0.82/+0.02/-0.71
-    for a true statement (mirror image for a false one).
+    With the default six-point bands this yields, for a *true* statement
+    (mirror image for a false one):
+
+        AT +0.995   MT +0.920   ST +0.711
+        SF +0.231   MF -0.280   AF -0.805
     """
     y = 1.0 if ground_truth else 0.0
     p_hat = bands.p_hat(response)
