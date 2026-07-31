@@ -613,7 +613,51 @@ def console_student(
     }
 
 
+@app.post("/api/session/abandon")
+def session_abandon(body: dict, db: DbSession = Depends(get_session)):
+    """End a sitting early, keeping everything answered so far.
+
+    A child must be able to stop — feeling trapped in an instrument is both
+    unkind and bad for the data, since the answers after that point measure
+    endurance rather than belief. The event store is append-only, so a short
+    sitting is a *complete* record of fewer items, not a damaged one. The stop
+    reason is recorded so analysis can tell an abandoned sitting from one that
+    ran to the cap and treat the fingerprint's breadth accordingly.
+    """
+    sitting = db.get(Session, int(body.get("session_id", 0) or 0))
+    if not sitting:
+        raise HTTPException(404, "unknown session")
+    answered = len(list(db.exec(select(Response).where(Response.session_id == sitting.id)).all()))
+    _finish(db, sitting, "abandoned")
+    return {"ok": True, "session_id": sitting.id, "answered": answered,
+            "stop_reason": sitting.stop_reason}
+
+
 # --- PTM identity + report (the §10 exception, fenced) ----------------------
+
+@app.post("/api/console/student/{code}/reset-pin")
+def reset_student_pin(
+    code: str,
+    acct: Optional[TeacherAccount] = Depends(teacher_from_token),
+    db: DbSession = Depends(get_session),
+):
+    """Clear a forgotten PIN so the child can get back into their own record.
+
+    An anonymous instrument has no email to send a reset to, so the teacher is
+    the recovery path — which is right, because they are the only person who
+    can check in the room that the child asking is the child who owns the code.
+    Scoped to the teacher's own sections. The PIN is cleared, never revealed:
+    hashes are one-way and a readable PIN would be worse than none.
+    """
+    student = _find_student(db, code)
+    if not student:
+        raise HTTPException(404, "unknown student code")
+    if acct is not None and student.section not in set(_norm_sections(json.loads(acct.sections))):
+        raise HTTPException(403, "outside your scope")
+    student.pin_hash = None
+    db.add(student)
+    db.commit()
+    return {"ok": True, "code": student.code, "pin_set": False}
 
 @app.post("/api/console/student/{code}/name")
 def set_student_name(

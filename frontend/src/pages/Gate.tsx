@@ -1,7 +1,8 @@
 import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../auth/AuthProvider";
-import { api, setTeacherToken } from "../api";
+import { ApiError, api, isOffline, setTeacherToken } from "../api";
+import { forgetAllCodes, recentCodes, rememberCode } from "../auth/recall";
 import {
   ANIMALS,
   isPinShape,
@@ -157,6 +158,8 @@ function StudentFlow({ onBack, onDone }: { onBack: () => void; onDone: (code: st
   const [avatar, setAvatar] = useState(0);
   const [pin, setPin] = useState("");
   const [retCode, setRetCode] = useState("");
+  const [retPin, setRetPin] = useState("");
+  const [recent, setRecent] = useState<string[]>(() => recentCodes());
   const [err, setErr] = useState("");
 
   return (
@@ -201,6 +204,7 @@ function StudentFlow({ onBack, onDone }: { onBack: () => void; onDone: (code: st
             } catch {
               code = makeStudentCode({ classLevel: "Class 7", section, subject: "Maths", avatarId: avatar }).code;
             }
+            rememberCode(code);
             onDone(code, pin, false);
           }}>Forge my code ▸</button>
         </>
@@ -208,14 +212,60 @@ function StudentFlow({ onBack, onDone }: { onBack: () => void; onDone: (code: st
         <>
           <div className="eyebrow">Welcome back</div>
           <h2 className="gt">Enter your code</h2>
+
+          {recent.length > 0 && (
+            <div className="recall">
+              <div className="recall-h">Used on this computer</div>
+              <div className="recall-list">
+                {recent.map((c) => (
+                  <button key={c} type="button" className={`recall-b${retCode.trim().toUpperCase() === c ? " on" : ""}`}
+                    onClick={() => { setRetCode(c); setErr(""); }}>
+                    {c}
+                  </button>
+                ))}
+              </div>
+              <button type="button" className="recall-clear" onClick={() => { forgetAllCodes(); setRecent([]); }}>
+                Not mine — clear this list
+              </button>
+            </div>
+          )}
+
           <Field label="Student code"><input className="in mono" value={retCode} placeholder="KESTREL·4B" onChange={(e) => setRetCode(e.target.value)} /></Field>
+          <Field label="PIN (only if you set one)">
+            <input className="in mono" inputMode="numeric" maxLength={4} value={retPin} placeholder="••••"
+              onChange={(e) => setRetPin(e.target.value.replace(/\D/g, ""))} />
+          </Field>
           <div className="err">{err}</div>
           <button className="btn" onClick={async () => {
             if (!retCode.trim()) { setErr("Enter your student code."); return; }
             setErr("");
-            try { await api.loginStudent(retCode.trim(), undefined); } catch { /* offline: proceed */ }
-            onDone(retCode.trim().toUpperCase(), "", true);
+            const code = retCode.trim().toUpperCase();
+            try {
+              await api.loginStudent(code, retPin || undefined);
+            } catch (e) {
+              // A reply from the server is an answer, not a network problem.
+              // Proceeding past a 401 signed a child in with the wrong PIN;
+              // proceeding past a 404 silently orphaned their whole history
+              // under a code that does not exist.
+              if (!isOffline(e)) {
+                const st = (e as ApiError).status;
+                setErr(
+                  st === 401 ? "That PIN doesn't match this code. Try again, or ask your teacher to reset it."
+                  : st === 404 ? "No student has that code. Check the spelling — or ask your teacher to look it up."
+                  : "Could not sign you in. Ask your teacher."
+                );
+                return;
+              }
+              // Genuinely offline: the lab may be air-gapped, so carry on.
+            }
+            rememberCode(code);
+            onDone(code, retPin, true);
           }}>Enter the diagnostic ▸</button>
+
+          <p className="hint">
+            <b>Forgotten your code?</b> Your teacher can find it — they have the class list and
+            can reset your PIN. Nothing you have done is lost.
+          </p>
         </>
       )}
     </section>

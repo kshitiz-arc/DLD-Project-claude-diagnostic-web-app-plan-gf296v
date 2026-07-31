@@ -507,3 +507,22 @@
 .sx-boardtabs button:hover { color: var(--text); border-color: var(--edge); }
 .sx-boardtabs button[aria-selected="true"] { color: var(--void); border-color: transparent;
   background: linear-gradient(100deg, var(--cyan), var(--violet)); font-weight: 700; }
+
+/* ── end-sitting control ──────────────────────────────────────────────────
+   Deliberately quiet: available, never inviting. A child who wants to stop
+   must be able to, but the button should not read as the obvious next move. */
+.sx-quit { cursor: pointer; padding: 7px 13px; border-radius: 3px; font-size: 10px;
+  letter-spacing: .14em; text-transform: uppercase; color: var(--muted);
+  border: 1px solid var(--line); background: var(--panel2); transition: .18s var(--ease); }
+.sx-quit:hover { color: var(--misc); border-color: color-mix(in oklab, var(--misc) 50%, transparent); }
+
+.sx-modal { position: fixed; inset: 0; z-index: 90; display: grid; place-items: center; padding: 20px; }
+.sx-modal .sx-scrim { position: absolute; inset: 0; background: color-mix(in oklab, var(--void) 72%, transparent);
+  backdrop-filter: blur(3px); }
+.sx-card { position: relative; max-width: 440px; padding: clamp(20px,4vw,28px);
+  background: var(--panel); border: 1px solid var(--line); border-radius: 5px; box-shadow: var(--shadow); }
+.sx-card h2 { font-family: var(--disp); font-size: 22px; letter-spacing: .08em; text-transform: uppercase;
+  margin: 0 0 10px; }
+.sx-card p { font-size: 13.5px; line-height: 1.65; color: var(--muted); margin: 0 0 20px; }
+.sx-card p b { color: var(--text); }
+.sx-cardbtns { display: flex; gap: 10px; flex-wrap: wrap; }

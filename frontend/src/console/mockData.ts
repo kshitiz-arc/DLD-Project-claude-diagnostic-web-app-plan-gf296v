@@ -31,40 +31,68 @@ function mulberry32(a: number) {
 }
 const clamp = (x: number, a: number, b: number) => Math.max(a, Math.min(b, x));
 
+/* The offline stand-in.
+ *
+ * It has to agree with the real thing, or the console tells two different
+ * stories depending on whether the LAN is up. Earlier this produced 10-12
+ * attempted items when a sitting is 35, and up to 42% rushed when real data
+ * runs nearer 14% — numbers a teacher would reasonably have believed.
+ *
+ * So it mirrors the server's generative model rather than inventing
+ * statistics: a latent ability, a per-concept offset, a calibration bias, and
+ * a separate misconception-proneness. Cells are then *consequences* of those,
+ * which is what keeps the four of them mutually consistent.
+ */
 function makeStudents(section: string, n: number, seed: number): Student[] {
   const rnd = mulberry32(seed);
+  // Same section ordering the seeded cohort has: A ahead, C behind.
+  const shift = section === "A" ? 0.09 : section === "C" ? -0.09 : 0;
   const out: Student[] = [];
   for (let i = 0; i < n; i++) {
-    const ability = clamp(0.3 + rnd() * 0.62 + (rnd() - 0.5) * 0.1, 0.18, 0.97);
-    const cal = (rnd() - 0.35) * 0.6;
-    const attempted = 10 + Math.floor(rnd() * 3);
-    const completion = clamp(0.62 + rnd() * 0.4, 0.5, 1);
-    const invalid = clamp(rnd() * rnd() * 0.4, 0, 0.42);
-    const correct = Math.round(ability * attempted);
-    const wrong = attempted - correct;
-    const secShare = clamp(0.35 + ability * 0.6 - Math.max(0, -cal) * 0.5, 0.1, 0.95);
+    const ability = clamp(0.62 + shift + (rnd() - 0.5) * 0.46, 0.2, 0.97);
+    const cal = (rnd() - 0.45) * 0.55;              // >0 over-confident
+    const miscProne = rnd() * 0.5;                  // concept-specific in reality
+
+    // Most sittings run to the 35-item cap; a few end early or are abandoned.
+    const attempted = rnd() < 0.78 ? 35 : 12 + Math.floor(rnd() * 22);
+    const completion = clamp(attempted / 35, 0.3, 1);
+    // Rushed answers: usually a handful, occasionally a child tapping through.
+    const invalid = clamp(rnd() * rnd() * 0.34 + 0.03, 0.02, 0.36);
+
+    const valid = Math.max(1, Math.round(attempted * (1 - invalid)));
+    const correct = Math.round(valid * ability);
+    const wrong = valid - correct;
+
+    // Of the correct answers, how many were said with conviction.
+    const secShare = clamp(0.42 + ability * 0.45 + cal * 0.35, 0.15, 0.94);
     const secure = Math.round(correct * secShare);
     const fragile = correct - secure;
-    const wrongConf = clamp(0.28 + cal * 1.4, 0.05, 0.92);
+
+    // Of the wrong ones, how many were a held belief rather than a blank.
+    const wrongConf = clamp(miscProne + cal * 0.7, 0.04, 0.75);
     const misc = Math.round(wrong * wrongConf);
     const gap = wrong - misc;
+
     const vec: number[] = [];
-    for (let c = 0; c < 10; c++) vec.push(clamp(ability + (rnd() - 0.5) * 0.4, 0.05, 0.99));
-    const name = `${ANIMALS[i % ANIMALS.length]}·${1 + Math.floor(rnd() * 9)}${section}`;
+    for (let c = 0; c < 10; c++) vec.push(clamp(ability + (rnd() - 0.5) * 0.42, 0.05, 0.99));
+
+    const name = `${ANIMALS[i % ANIMALS.length]}·${1 + Math.floor(rnd() * 9)}${section}${10 + Math.floor(rnd() * 90)}`;
     out.push({
-      code: name, av: name.slice(0, 1) + (1 + Math.floor(rnd() * 9)), avc: COLORS[i % COLORS.length], section,
+      code: name, av: name.slice(0, 2).toUpperCase(), avc: COLORS[i % COLORS.length], section,
       attempted, completion, invalid, cal,
       cells: { SECURE: secure, FRAGILE: fragile, GAP: gap, MISCONCEPTION: misc },
-      vec, sbar: clamp(ability * 1.7 - 0.72 - Math.max(0, cal) * 0.5, -0.6, 0.98),
+      // Signed Brier mean: strongly positive for a secure child, negative only
+      // for one who is confidently wrong more often than not.
+      vec, sbar: clamp(ability * 1.9 - 0.85 - Math.max(0, cal) * 0.45, -0.6, 0.98),
     });
   }
   return out;
 }
 
 export const SECTIONS: Record<string, Student[]> = {
-  A: makeStudents("A", 24, 101),
-  B: makeStudents("B", 22, 202),
-  C: makeStudents("C", 20, 303),
+  A: makeStudents("A", 21, 101),
+  B: makeStudents("B", 21, 202),
+  C: makeStudents("C", 21, 303),
 };
 export const ALL: Student[] = [...SECTIONS.A, ...SECTIONS.B, ...SECTIONS.C];
 

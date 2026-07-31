@@ -56,19 +56,42 @@ function authHeaders(): Record<string, string> {
   return teacherToken ? { "x-teacher-token": teacherToken } : {};
 }
 
+/** A reply the server actually sent — as opposed to never reaching it.
+ *
+ *  The distinction is load-bearing. "Offline, carry on locally" is correct
+ *  behaviour on an air-gapped LAN that dropped mid-sitting; it is emphatically
+ *  wrong for a 401 or a 404, where the server has told us the credentials are
+ *  bad. Collapsing the two into one `catch` is how a wrong PIN turns into a
+ *  successful sign-in.
+ */
+export class ApiError extends Error {
+  constructor(message: string, readonly status: number) {
+    super(message);
+    this.name = "ApiError";
+  }
+}
+
+/** True when the request never reached the server (LAN drop, air-gap). */
+export function isOffline(e: unknown): boolean {
+  return !(e instanceof ApiError);
+}
+
 async function post<T>(path: string, body: unknown, headers: Record<string, string> = {}): Promise<T> {
   const res = await fetch(`${BASE}${path}`, {
     method: "POST",
     headers: { "content-type": "application/json", ...authHeaders(), ...headers },
     body: JSON.stringify(body),
   });
-  if (!res.ok) throw new Error((await res.json().catch(() => ({}))).detail ?? `HTTP ${res.status}`);
+  if (!res.ok) {
+    const detail = (await res.json().catch(() => ({}))).detail ?? `HTTP ${res.status}`;
+    throw new ApiError(detail, res.status);
+  }
   return res.json() as Promise<T>;
 }
 
 async function get<T>(path: string, headers: Record<string, string> = {}): Promise<T> {
   const res = await fetch(`${BASE}${path}`, { headers: { ...authHeaders(), ...headers } });
-  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  if (!res.ok) throw new ApiError(`HTTP ${res.status}`, res.status);
   return res.json() as Promise<T>;
 }
 
@@ -142,6 +165,15 @@ export const api = {
   submit: (session_id: number, item_id: number, response_option: ResponseOption, response_time_ms: number) =>
     post<ScoredOut>("/api/response", { session_id, item_id, response_option, response_time_ms }),
   summary: (session_id: number) => get<SessionSummary>(`/api/session/${session_id}/summary`),
+
+  /** Stop a sitting early. Answers already given are kept. */
+  abandonSession: (session_id: number) =>
+    post<{ ok: boolean; answered: number; stop_reason: string }>("/api/session/abandon", { session_id }),
+
+  /** Clear a forgotten PIN so a child can reach their own record again. */
+  resetStudentPin: (code: string) =>
+    post<{ ok: boolean; code: string; pin_set: boolean }>(
+      `/api/console/student/${encodeURIComponent(code)}/reset-pin`, {}),
 
   leaderboard: (board: "calibration" | "growth" | "effort", section?: string, limit = 8) =>
     get<{ board: string; section: string | null; entries: BoardEntry[] }>(

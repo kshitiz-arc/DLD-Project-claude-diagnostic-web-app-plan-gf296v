@@ -335,6 +335,51 @@ def test_health_and_lan_page():
     assert "cdn" not in page.text.lower()  # offline-safe: no external asset
 
 
+def test_login_rejects_a_wrong_pin_and_an_unknown_code():
+    """The server must say no, distinctly, so the client can tell them apart.
+
+    The client used to catch every failure here as "offline, carry on", which
+    turned a 401 into a successful sign-in and a 404 into a child working under
+    a code that does not exist — losing their history silently. The status
+    codes are the contract that fix depends on.
+    """
+    code = client.post("/api/student/create",
+                       json={"section": "B", "avatar_id": 1, "pin": "4417"}).json()["code"]
+    assert client.post("/api/student/login", json={"code": code, "pin": "4417"}).status_code == 200
+    assert client.post("/api/student/login", json={"code": code, "pin": "0000"}).status_code == 401
+    assert client.post("/api/student/login", json={"code": code}).status_code == 401
+    assert client.post("/api/student/login", json={"code": "NOBODY·9Z99"}).status_code == 404
+
+
+def test_teacher_can_clear_a_forgotten_pin():
+    """The recovery path for an instrument with no email address."""
+    code = client.post("/api/student/create",
+                       json={"section": "B", "avatar_id": 1, "pin": "1234"}).json()["code"]
+    assert client.post("/api/student/login", json={"code": code}).status_code == 401
+
+    out = client.post(f"/api/console/student/{code}/reset-pin", headers=ADMIN).json()
+    assert out["pin_set"] is False
+    # The child is back in their own record, with every past sitting intact.
+    assert client.post("/api/student/login", json={"code": code}).status_code == 200
+
+
+def test_abandoning_a_sitting_keeps_the_answers():
+    """Stopping early must yield a short complete record, not a damaged one."""
+    code = client.post("/api/student/create", json={"section": "B", "avatar_id": 1}).json()["code"]
+    sid = client.post("/api/session/start", json={"code": code, "mode": "adaptive"}).json()["session_id"]
+    for _ in range(4):
+        item = client.post("/api/session/next", json={"session_id": sid}).json()["item"]
+        _answer(sid, item["id"], "MT", item["min_read_ms"] + 400)
+
+    out = client.post("/api/session/abandon", json={"session_id": sid}).json()
+    assert out["answered"] == 4 and out["stop_reason"] == "abandoned"
+
+    # The four answers are still in the record and still scored.
+    detail = client.get(f"/api/console/student/{code}", headers=ADMIN).json()
+    assert detail["attempted"] == 4
+    assert client.get(f"/api/student/{code}/history").json()["items_answered"] == 4
+
+
 def test_real_name_never_reaches_research_exports():
     """The one PII field must stay inside the console.
 

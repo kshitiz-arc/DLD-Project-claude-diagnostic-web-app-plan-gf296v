@@ -5,6 +5,7 @@ import { useTheme } from "../hooks/useTheme";
 import { Icon } from "../components/Sprite";
 import { api, type CohortOut, type CohortStudent, type Hotspot, type StudentDetail } from "../api";
 import type { DiagnosticCell } from "../scoring";
+import { HelpPanel } from "./HelpPanel";
 import { ALL, CONCEPTS, HOTSPOTS, SECTIONS, STATUS_LABEL, type Student, statusOf } from "./mockData";
 import "./console.css";
 
@@ -255,6 +256,11 @@ export function Console() {
               ))}
             </div>
           </section>
+
+          {/* Fills the left column, which otherwise ran short against a tall
+              student panel — and gives a teacher the rubric next to the data
+              it explains rather than in a document nobody opens. */}
+          <HelpPanel />
         </div>
 
         <div className="cx-col">
@@ -321,6 +327,7 @@ function PtmRow({ code }: { code: string }) {
   const [name, setName] = useState("");
   const [saved, setSaved] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [pinMsg, setPinMsg] = useState("");
 
   useEffect(() => {
     setName(""); setSaved(null);
@@ -359,6 +366,30 @@ function PtmRow({ code }: { code: string }) {
           Report card ›
         </button>
       </div>
+
+      {/* Recovery. An anonymous instrument has no email to send a reset to, so
+          the teacher is the recovery path — and that is right, because they are
+          the only person who can check in the room that the child asking is the
+          child who owns the code. */}
+      <div className="cx-ptmrow" style={{ marginTop: 10 }}>
+        <button
+          className="cx-ptmbtn ghost"
+          onClick={async () => {
+            if (!confirm(`Clear the PIN on ${code}?\n\nThey'll be able to sign in with just their code, and can set a new PIN afterwards.`)) return;
+            setPinMsg("…");
+            try { await api.resetStudentPin(code); setPinMsg("PIN cleared"); }
+            catch { setPinMsg("Couldn't clear it"); }
+            setTimeout(() => setPinMsg(""), 3000);
+          }}
+        >
+          Forgotten PIN — clear it
+        </button>
+        {pinMsg && <span className="cx-ptmmsg">{pinMsg}</span>}
+      </div>
+      <p className="cx-ptmnote" style={{ marginTop: 8, marginBottom: 0 }}>
+        Forgotten the <b>code</b> too? Search the roster above — it filters as you type, and
+        a name saved here is searchable alongside the code.
+      </p>
     </div>
   );
 }

@@ -141,3 +141,22 @@
   .tid .scope { flex-basis: 100%; }
 }
 
+
+/* ── codes remembered on this device ──────────────────────────────────────
+   The first line of defence against a forgotten code. Safe to show because a
+   code is not PII — it names a record, not a child — and the PIN is what
+   actually guards the record on a shared lab machine. */
+.recall { margin-bottom: 16px; padding: 12px 14px; border: 1px dashed var(--line);
+  border-radius: 4px; background: color-mix(in oklab, var(--cyan) 5%, transparent); }
+.recall-h { font-size: 10px; letter-spacing: .18em; text-transform: uppercase;
+  color: var(--faint); margin-bottom: 9px; }
+.recall-list { display: flex; flex-wrap: wrap; gap: 7px; }
+.recall-b { cursor: pointer; font-family: var(--mono); font-size: 12px; letter-spacing: .04em;
+  padding: 7px 11px; border-radius: 3px; color: var(--cyan);
+  border: 1px solid color-mix(in oklab, var(--cyan) 40%, transparent);
+  background: var(--panel2); transition: .16s var(--ease); }
+.recall-b:hover { border-color: var(--cyan); color: var(--bone); }
+.recall-b.on { background: color-mix(in oklab, var(--cyan) 20%, transparent); color: var(--bone); }
+.recall-clear { margin-top: 10px; padding: 0; border: 0; background: none; cursor: pointer;
+  font-size: 10.5px; color: var(--faint); text-decoration: underline; }
+.recall-clear:hover { color: var(--misc); }

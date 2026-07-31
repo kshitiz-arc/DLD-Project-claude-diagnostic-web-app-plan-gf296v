@@ -129,6 +129,7 @@ export function Session() {
   // no console-scoped endpoint from a student's browser.
   const [byConcept, setByConcept] = useState<Record<string, { seen: number; correct: number; misc: number; rt: number }>>({});
   const [history, setHistory] = useState<StudentHistory | null>(null);
+  const [quitting, setQuitting] = useState(false);
   const [agg, setAgg] = useState({ sSum: 0, bSum: 0, vN: 0 });
   const [base, setBase] = useState(ARSENAL.map(() => ({ xp: 0, miss: 0 })));
   const [verdict, setVerdict] = useState<Verdict | null>(null);
@@ -398,10 +399,23 @@ export function Session() {
     return () => window.removeEventListener("keydown", onKey);
   }, []);
 
+  /** Stop early, keeping everything answered so far. */
+  const endSitting = useCallback(async () => {
+    setQuitting(false);
+    locked.current = true;
+    if (sidRef.current != null) {
+      // Best effort: the answers are already in the append-only store, so a
+      // failed call costs the stop_reason label, not the data.
+      await api.abandonSession(sidRef.current).catch(() => { /* offline */ });
+    }
+    setItem(null);
+    setDone(true);
+  }, []);
+
   const restart = () => {
     heat.current = 250; locked.current = false; cursor.current = 0;
     dtOn.current = false; dtLeftRef.current = 0;
-    setDtActive(false); setDtLeft(0); setTriggers(0);
+    setDtActive(false); setDtLeft(0); setTriggers(0); setQuitting(false);
     setRankIndex(rankFromHeat(250)); setCombo(0); setOrbs(0); setDt(0); setAnswered(0);
     setCounts({ SECURE: 0, FRAGILE: 0, GAP: 0, MISCONCEPTION: 0 }); setAgg({ sSum: 0, bSum: 0, vN: 0 });
     setByConcept({}); setHistory(null);
@@ -452,7 +466,17 @@ export function Session() {
         </div>
         <div className="sx-spacer" />
         <div className="sx-tag"><div className="sx-av">{av}</div><div className="sx-who"><b>{code}</b><span>7 · B · Maths</span></div></div>
-        <button className={`sx-toggle${lens ? " on" : ""}`} onClick={() => setLens((v) => !v)} aria-pressed={lens}><span className="sx-dot" />Lens</button>
+        {/* Lens is a results-screen control. It is not offered mid-sitting
+            because its numbers would be actionable while answers can still
+            change. */}
+        {done && (
+          <button className={`sx-toggle${lens ? " on" : ""}`} onClick={() => setLens((v) => !v)} aria-pressed={lens}>
+            <span className="sx-dot" />Lens
+          </button>
+        )}
+        {booted && !done && !tutorial && (
+          <button className="sx-quit" onClick={() => setQuitting(true)}>End sitting</button>
+        )}
         <button className="sx-ibtn" onClick={toggle} aria-label="Toggle theme">◐</button>
       </header>
 
@@ -693,16 +717,32 @@ export function Session() {
             )}
           </div>
           <div className="sx-orbs"><Icon id="s-orb" /><div><div className="n">{orbs.toLocaleString()}</div><div className="l">Red orbs</div></div></div>
-          {lens && (
-            <div className="sx-readout" aria-live="polite">
-              <span className="t">Diagnostic lens</span>
-              <span>signed s̄ <b className={sBar < 0 ? "neg" : "pos"}>{agg.vN ? `${sBar >= 0 ? "+" : ""}${sBar.toFixed(2)}` : "—"}</b></span>
-              <span>calibration <b>{agg.vN ? `${bias >= 0 ? "+" : ""}${bias.toFixed(2)}${bias > 0 ? " over" : " under"}` : "—"}</b></span>
-              <span>valid <b>{agg.vN}</b></span>
-              <span>· {live ? "server-selected & scored. " : ""}Only your teacher sees these.</span>
-            </div>
-          )}
+          {/* The diagnostic readout used to live here, behind the Lens toggle.
+              It has been removed from the in-task view on purpose: showing a
+              child their running signed score mid-sitting lets them tune the
+              next confidence report against it, which is a direct attack on
+              the strictly-proper scoring rule the whole instrument rests on
+              (plan §5.2, §8). The same numbers are on the results screen,
+              where they can no longer change an answer. */}
         </footer>
+      )}
+
+      {quitting && (
+        <div className="sx-modal" role="dialog" aria-modal="true" aria-labelledby="sx-quit-h">
+          <div className="sx-scrim" onClick={() => setQuitting(false)} />
+          <div className="sx-card">
+            <h2 id="sx-quit-h">End the sitting?</h2>
+            <p>
+              You've answered <b>{answered}</b> of {cap}. Everything you've done so far is
+              kept — you'll go straight to your results, and you can pick up a new sitting
+              whenever you like.
+            </p>
+            <div className="sx-cardbtns">
+              <button className="sx-btn ghost" onClick={() => setQuitting(false)}>Keep going</button>
+              <button className="sx-btn" onClick={endSitting}>End it now</button>
+            </div>
+          </div>
+        </div>
       )}
 
       {verdict && (
