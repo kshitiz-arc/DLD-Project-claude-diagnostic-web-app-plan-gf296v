@@ -79,12 +79,60 @@
 /* Paper. A parent may well be handed this printed, and the dark interface is
    both unreadable and expensive on a school printer. */
 @media print {
+  /* Repaint the whole token set rather than chasing individual rules.
+     Everything on this page — including the radar chart's strokes and fills —
+     reads these variables, so one override converts the lot. Overriding a
+     handful of colours instead left --muted, --faint and --line at their
+     dark-field values, which is pale blue-grey on white: legible on screen,
+     nearly invisible on paper. */
+  :root {
+    --bg: #fff; --bg2: #fff; --void: #fff;
+    --panel: #fff; --panel2: #fff; --glass: #fff;
+    --steel: #eee; --line: #c7c7c7; --line2: #e3e3e3; --edge: #8a8a8a;
+    --text: #111; --muted: #3f3f3f; --faint: #666; --bone: #000;
+    /* Status hues darkened for ink: the screen values are tuned for glow on
+       a near-black field and wash out completely on white. */
+    --cyan: #0a6274; --violet: #5b21b6; --gold: #7a5600; --red: #b3122e;
+    --secure: #0a7350; --fragile: #8a5300; --gap: #14589e; --misc: #b3122e;
+    --shadow: none; --glow-cyan: none;
+    --sheen: none;
+  }
+
+  /* The app's field gradients are background-attachment: fixed, which some
+     engines re-rasterise onto every sheet. */
+  html, body { background: #fff !important; background-image: none !important; }
+
+  @page { size: A4; margin: 14mm 13mm 16mm; }
+
   .no-print { display: none !important; }
   .rp { max-width: none; padding: 0; }
   .rp-sheet { border: 0; box-shadow: none; padding: 0; background: #fff; }
-  .rp-name, .rp-table td, .rp-ps { color: #000; }
-  .rp-block h2 { color: #000; border-bottom: 1px solid #999; padding-bottom: 4px; }
-  .rp-effort > div, .rp-points li, .rp-list li { background: #fff; border-color: #bbb; }
-  .rp-effort b { color: #000; }
-  .rp-block { break-inside: avoid; }
+
+  .rp-head { border-bottom: 1.5px solid #333; }
+  .rp-block h2 { border-bottom: 1px solid #aaa; padding-bottom: 4px; }
+
+  /* Nothing that reads as one idea may straddle a sheet. */
+  .rp-block, .rp-points li, .rp-list li, .rp-effort > div,
+  .rp-table tr, .rp-foot { break-inside: avoid; }
+  .rp-block h2 { break-after: avoid; }
+  .rp-lead p, .rp-sub, .rp-fine { orphans: 2; widows: 2; }
+
+  /* Tighter on paper: screen sizing leaves the effort row and the chart
+     floating in whitespace at A4 width. */
+  .rp-effort { gap: 8px; }
+  .rp-effort > div { padding: 9px 10px; }
+  .rp-effort b { font-size: 19px; }
+  .rp-name { font-size: 28px; }
+  .rp-split { gap: 20px; }
+  .spider { max-width: 74mm; }
+
+  /* Filters on an SVG print unpredictably across engines, and the glow adds
+     nothing on paper. */
+  .sp-fill { filter: none; }
+  /* Keep the plot's translucent fill — SVG fill is content, not a background,
+     so it survives the browser's "don't print backgrounds" default, but say
+     so explicitly for the pill borders and cell stripes that are not. */
+  .rp-band, .rp-points li, .rp-list li, .rp-effort > div {
+    -webkit-print-color-adjust: exact; print-color-adjust: exact;
+  }
 }
