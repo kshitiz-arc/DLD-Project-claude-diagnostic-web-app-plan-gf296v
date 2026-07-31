@@ -35,7 +35,7 @@ const clamp = (x: number, a: number, b: number) => Math.max(a, Math.min(b, x));
  *
  * It has to agree with the real thing, or the console tells two different
  * stories depending on whether the LAN is up. Earlier this produced 10-12
- * attempted items when a sitting is 35, and up to 42% rushed when real data
+ * attempted items when a sitting was 35, and up to 42% rushed when real data
  * runs nearer 14% — numbers a teacher would reasonably have believed.
  *
  * So it mirrors the server's generative model rather than inventing
@@ -53,9 +53,11 @@ function makeStudents(section: string, n: number, seed: number): Student[] {
     const cal = (rnd() - 0.45) * 0.55;              // >0 over-confident
     const miscProne = rnd() * 0.5;                  // concept-specific in reality
 
-    // Most sittings run to the 35-item cap; a few end early or are abandoned.
-    const attempted = rnd() < 0.78 ? 35 : 12 + Math.floor(rnd() * 22);
-    const completion = clamp(attempted / 35, 0.3, 1);
+    // Most sittings run to the 15-item cap; a few end early or are abandoned.
+    // Keep in step with SESSION_CAP in backend/app/adaptive.py.
+    const CAP = 15;
+    const attempted = rnd() < 0.78 ? CAP : 6 + Math.floor(rnd() * (CAP - 6));
+    const completion = clamp(attempted / CAP, 0.3, 1);
     // Rushed answers: usually a handful, occasionally a child tapping through.
     const invalid = clamp(rnd() * rnd() * 0.34 + 0.03, 0.02, 0.36);
 

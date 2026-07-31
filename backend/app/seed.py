@@ -20,6 +20,7 @@ from sqlmodel import Session, select
 from diagnostic_scoring import Response as Opt
 from diagnostic_scoring import score_response
 
+from .adaptive import CONCEPT_CAP, SESSION_CAP
 from .ids import make_student_code
 from .itembank import BANK, STRANDS, twin_keys, validate_bank
 from .models import Concept, Item, PracticeLog, Response, Session as Sitting, Student
@@ -181,9 +182,9 @@ def seed_demo(session: Session, sections=("A", "B", "C"), per_section=21) -> Non
                 for c in pool:
                     rng.shuffle(pool[c])
                 served = []
-                for _round in range(4):
+                for _round in range(CONCEPT_CAP):
                     for c in strands:
-                        if pool[c] and len(served) < 35:
+                        if pool[c] and len(served) < SESSION_CAP:
                             served.append(pool[c].pop())
 
                 for pos, it in enumerate(served):

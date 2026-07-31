@@ -203,8 +203,8 @@ export function HelpPanel() {
 
         <Section title="How a sitting is put together">
           <ul className="hp-ul">
-            <li><b>35 items</b> per sitting, at most <b>4 per concept</b>, so the fingerprint stays ten-dimensional instead of one concept eating the hour.</li>
-            <li>The first <b>6 items are the hardest available</b>, one per concept, while the child is freshest — an easy item almost everyone clears and so moves no posterior.</li>
+            <li><b>15 items</b> per sitting, at most <b>4 per concept</b>. Across ten concepts that is one or two items each, so read the fingerprint as a <b>screen</b>, not a verdict — most concepts will be flagged provisional, and that flag is honest.</li>
+            <li>The first <b>3 items are the hardest available</b>, one per concept, while the child is freshest — an easy item almost everyone clears and so moves no posterior.</li>
             <li>After that the selector picks whichever concept it is <b>least certain</b> about.</li>
             <li>A confident-wrong answer triggers a <b>deeper probe</b>: first the perturbed twin of the item missed, then the same sub-skill, then the concept.</li>
             <li>Sittings stop at the cap, on <b>convergence</b> (nothing left to learn from more items), or when the bank is exhausted. A child may also <b>end early</b> — that is recorded as "abandoned" and the answers given still count.</li>
