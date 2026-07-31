@@ -20,8 +20,22 @@ def make_pin() -> str:
     return f"{secrets.randbelow(9000) + 1000}"
 
 
-def make_student_code(section: str, avatar_id: int) -> str:
-    animal = ANIMALS[avatar_id % len(ANIMALS)]
+def make_student_code(section: str, avatar_id: int = 0) -> str:
+    """Mint an anonymous call-sign.
+
+    The animal is drawn at random and is *not* a function of ``avatar_id``.
+    It used to be ``ANIMALS[avatar_id % len(ANIMALS)]``, which looked harmless
+    but meant the call-sign was decided by the avatar picker — and that picker
+    defaults to 0. In practice almost nobody changes it, so almost every child
+    in a sitting came out a KESTREL: sixteen of the seventeen names were never
+    issued, and a class full of near-identical codes is exactly how a child
+    ends up typing someone else's.
+
+    ``avatar_id`` is kept in the signature because callers pass it positionally
+    and it stays meaningful as the child's chosen tile colour; it simply has no
+    say in their name.
+    """
+    animal = secrets.choice(ANIMALS)
     # a 2-digit tail keeps codes memorable while making collisions negligible
     return f"{animal}·{secrets.randbelow(9) + 1}{section}{secrets.randbelow(90) + 10}"
 

@@ -187,9 +187,12 @@ export function Session() {
       liveRef.current = false; sidRef.current = null; cursor.current = 0;
       let needsTutorial = false;
       try {
-        // Only mint an account when nobody is signed in at all. Matching on a
-        // code value would steal the sitting of whoever owned that call-sign.
-        const c = signedInCode ?? (await api.createStudent({ section: "B", avatar_id: 1 })).code;
+        // Nobody signed in — someone opened /session directly, or the tab was
+        // restored after the identity expired. Minting an account here created
+        // a ghost record under a code the child never saw and could never get
+        // back into; the gate is the only place an identity is chosen.
+        if (!signedInCode) { nav("/", { replace: true }); return; }
+        const c = signedInCode;
         codeRef.current = c;
         // The scale anchor runs once per child (plan §8); the server remembers,
         // so a re-sit isn't slowed down by a tutorial they've already seen.
@@ -212,7 +215,7 @@ export function Session() {
       setBooted(true);
     })();
     return () => { cancelled = true; };
-  }, [runKey, loadNext, signedInCode]);
+  }, [runKey, loadNext, signedInCode, nav]);
 
   // Board data is only meaningful once the sitting is over, so fetch it then.
   useEffect(() => {

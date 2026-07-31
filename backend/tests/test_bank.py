@@ -95,3 +95,35 @@ def test_fixed_form_is_breadth_first_and_deterministic():
 def test_fixed_form_prefers_non_perturbed_items_first():
     form = fixed_form(_items(), 10)
     assert all(i.form != "perturbed" for i in form)
+
+
+# --- student call-signs -----------------------------------------------------
+
+def test_callsign_is_not_derived_from_the_avatar():
+    """The name must not be a function of the avatar picker.
+
+    It used to be ANIMALS[avatar_id % len(ANIMALS)]. The picker defaults to 0,
+    almost nobody changes it, so almost every child came out a KESTREL — the
+    other sixteen names were effectively never issued, and a room full of
+    near-identical codes is how a child ends up signed in as someone else.
+    """
+    from collections import Counter
+
+    from app.ids import ANIMALS, make_student_code
+
+    # Same avatar every time; the names must still spread.
+    names = Counter(make_student_code("B", 0).split("·")[0] for _ in range(600))
+    assert len(names) > len(ANIMALS) * 0.7, f"call-signs barely spread: {names}"
+    assert names.most_common(1)[0][1] < 200, f"one name dominates: {names.most_common(3)}"
+
+
+def test_callsign_shape_is_stable():
+    """ANIMAL-digit-SECTION-two digits, so a child can read it back aloud."""
+    import re
+
+    for av in (0, 1, 5, 99):
+        code = make_student_code("B", av)
+        assert re.fullmatch(r"[A-Z]+·[1-9]B\d{2}", code), code
+
+
+from app.ids import make_student_code  # noqa: E402  (used by the test above)

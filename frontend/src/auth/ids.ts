@@ -68,8 +68,12 @@ export function makeStudentCode(params: {
   avatarId: number;
 }): StudentCode {
   const { classLevel, section, subject, avatarId } = params;
-  const animal = ANIMALS[avatarId % ANIMALS.length];
-  const code = `${animal}·${1 + randInt(9)}${section}`;
+  // Random, not ANIMALS[avatarId] — see make_student_code in backend/app/ids.py.
+  // Keying the name off the avatar picker made every child who left it on the
+  // default (0) a KESTREL. Tail matches the server's shape so an offline code
+  // is indistinguishable from an online one.
+  const animal = ANIMALS[randInt(ANIMALS.length)];
+  const code = `${animal}·${1 + randInt(9)}${section}${10 + randInt(90)}`;
   return {
     code,
     pinSet: false,
