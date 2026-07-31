@@ -40,6 +40,24 @@ const BOARDS: { k: "calibration" | "growth" | "effort"; label: string; unit: str
 ];
 const rankFromHeat = (h: number) => Math.max(0, Math.min(RANKS.length - 1, Math.floor(h / TIER)));
 
+/* Devil Trigger — what a filled meter actually buys.
+
+   Expressive only, by design. It changes how the arena looks and how the
+   *style* gauge behaves; it never touches the signed diagnostic score, and it
+   never touches red orbs — those are scored server-side (xp_item) and feed
+   concept_level and the CSV exports, so a bonus there would let a child level
+   a concept by transforming rather than by knowing it (plan §1.1).
+
+   The window is counted in valid responses, never in seconds. A timed buff
+   would push a child to rush to cash it in, and the RT floor then voids those
+   answers as invalid (plan §5.4) — the reward would actively manufacture bad
+   data. Counting items removes the clock entirely.
+
+   Violet/gold, not red: --misc is the misconception hue and must keep meaning
+   "confidently wrong". A reward wearing the warning colour would blur both. */
+const DT_CHARGES = 3;
+const DT_HEAT_MULT = 1.6;
+
 interface PlayItem {
   id: number; html: string; strand: string; axis: string; difficulty: number;
   minReadMs: number; truth?: boolean;
@@ -91,6 +109,9 @@ export function Session() {
   const [combo, setCombo] = useState(0);
   const [orbs, setOrbs] = useState(0);
   const [dt, setDt] = useState(0);
+  const [dtActive, setDtActive] = useState(false);
+  const [dtLeft, setDtLeft] = useState(0);
+  const [triggers, setTriggers] = useState(0);
   const [counts, setCounts] = useState<Record<DiagnosticCell, number>>({ SECURE: 0, FRAGILE: 0, GAP: 0, MISCONCEPTION: 0 });
   const [agg, setAgg] = useState({ sSum: 0, bSum: 0, vN: 0 });
   const [base, setBase] = useState(ARSENAL.map(() => ({ xp: 0, miss: 0 })));
@@ -112,6 +133,12 @@ export function Session() {
   const rtFillRef = useRef<HTMLElement>(null);
   const rootRef = useRef<HTMLDivElement>(null);
   const answerRef = useRef<(r: ResponseOption) => void>(() => {});
+  // Mirrored as refs so answer() can read the trigger state without taking a
+  // dependency on it and re-binding on every charge spent.
+  const dtOn = useRef(false);
+  const dtLeftRef = useRef(0);
+  const dtFxRef = useRef<HTMLElement>(null);
+  const unleashRef = useRef<() => void>(() => {});
 
   const mapDelivered = (d: {
     id: number; strand: string; axis: string; statement_text: string; difficulty: number; min_read_ms: number;
@@ -185,7 +212,9 @@ export function Session() {
     let raf = 0; let last = performance.now();
     const loop = (now: number) => {
       const d = (now - last) / 1000; last = now;
-      if (!locked.current && !done) heat.current = Math.max(0, heat.current - 7 * d);
+      // Style holds while transformed — the classic "gauge doesn't drain in DT".
+      // Only the *idle* bleed pauses; the penalties in answer() are untouched.
+      if (!locked.current && !done && !dtOn.current) heat.current = Math.max(0, heat.current - 7 * d);
       if (gaugeRef.current) gaugeRef.current.style.width = `${(heat.current / HEAT_MAX) * 100}%`;
       const ri = rankFromHeat(heat.current);
       setRankIndex((prev) => (prev !== ri ? ri : prev));
@@ -213,6 +242,22 @@ export function Session() {
     el.classList.remove(cls); void el.offsetWidth; el.classList.add(cls);
   };
 
+  // Spending the meter is manual on purpose. The reward a child remembers is
+  // choosing the moment to burn it; firing it automatically at 100 would make
+  // it wallpaper they never notice.
+  const unleash = useCallback(() => {
+    if (dt < 100 || dtOn.current || done || tutorial || !item) return;
+    dtOn.current = true; dtLeftRef.current = DT_CHARGES;
+    setDtActive(true); setDtLeft(DT_CHARGES); setDt(0); setTriggers((t) => t + 1);
+    setToast({ k: "⟁", name: "Devil Trigger", sub: `unleashed · next ${DT_CHARGES} valid answers` });
+    setTimeout(() => setToast(null), 2200);
+    replay(dtFxRef, "on");
+    const cx = window.innerWidth / 2, cy = window.innerHeight / 2;
+    burst(cx, cy, "var(--violet)", 38);
+    burst(cx, cy, "var(--gold)", 22);
+  }, [dt, done, tutorial, item, burst]);
+  unleashRef.current = unleash;
+
   const answer = useCallback(async (r: ResponseOption) => {
     if (locked.current || done || tutorial || !item) return;
     locked.current = true;
@@ -236,14 +281,37 @@ export function Session() {
       sc = localScore(r, item, rt);
     }
     const { cell: cl, brier: s, xp: gain, valid } = sc;
-    setOrbs((o) => o + gain);
+    setOrbs((o) => o + gain);   // server-scored; the trigger never multiplies this
 
+    const inDT = dtOn.current;
     let newCombo = combo;
     if (!valid) { heat.current = Math.max(0, heat.current - 120); newCombo = 0; }
-    else if (s > 0.5) { newCombo = combo + 1; heat.current = Math.min(HEAT_MAX, heat.current + 70 + Math.min(newCombo * 10, 70)); setDt((d) => Math.min(100, d + (cl === "SECURE" ? 22 : 10))); }
-    else if (cl === "MISCONCEPTION") { heat.current = Math.max(0, heat.current - 170); newCombo = 0; setDt((d) => Math.max(0, d - 15)); }
+    else if (s > 0.5) {
+      newCombo = combo + 1;
+      const kick = 70 + Math.min(newCombo * 10, 70);
+      heat.current = Math.min(HEAT_MAX, heat.current + (inDT ? kick * DT_HEAT_MULT : kick));
+      // The meter is spent, not topped up, while you are transformed.
+      if (!inDT) setDt((d) => Math.min(100, d + (cl === "SECURE" ? 22 : 10)));
+    }
+    // Confident-wrong is the product: it costs the same style whether or not
+    // the child is transformed, and it still drains the meter.
+    else if (cl === "MISCONCEPTION") { heat.current = Math.max(0, heat.current - 170); newCombo = 0; if (!inDT) setDt((d) => Math.max(0, d - 15)); }
     else { heat.current = Math.max(0, heat.current - 40); newCombo = 0; }
     setCombo(newCombo);
+
+    // A charge is only spent on an answer that counted — a rushed one buys the
+    // child nothing here either.
+    if (inDT && valid) {
+      const left = Math.max(0, dtLeftRef.current - 1);
+      dtLeftRef.current = left;
+      setDtLeft(left);
+      if (left === 0) {
+        dtOn.current = false;
+        setDtActive(false);
+        setToast({ k: "◇", name: "Trigger spent", sub: "build the meter and go again" });
+        setTimeout(() => setToast(null), 1800);
+      }
+    }
 
     if (valid) {
       setCounts((c) => ({ ...c, [cl]: c[cl] + 1 }));
@@ -264,7 +332,11 @@ export function Session() {
 
     const cx = window.innerWidth / 2, cy = window.innerHeight / 2;
     if (!valid || cl === "MISCONCEPTION") { replay(hudRef, "shake"); replay(dmgRef, "on"); }
-    if (valid && cl === "SECURE") { burst(cx, cy, "var(--secure)", 20); if (newCombo >= 3) burst(cx, cy, "var(--gold)", 10); }
+    if (valid && cl === "SECURE") {
+      burst(cx, cy, "var(--secure)", 20);
+      if (newCombo >= 3) burst(cx, cy, "var(--gold)", 10);
+      if (inDT) burst(cx, cy, "var(--violet)", 18);   // a hit lands harder while transformed
+    }
     else if (valid && cl === "MISCONCEPTION") burst(cx, cy, "var(--misc)", 16);
     else if (valid) burst(cx, cy, CELLMETA[cl].color, 8);
 
@@ -279,6 +351,7 @@ export function Session() {
     const onKey = (e: KeyboardEvent) => {
       const map: Record<string, ResponseOption> = { "1": "AF", "2": "SF", "3": "ST", "4": "AT" };
       if (map[e.key]) answerRef.current(map[e.key]);
+      else if (e.key === "t" || e.key === "T") unleashRef.current();
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
@@ -286,6 +359,8 @@ export function Session() {
 
   const restart = () => {
     heat.current = 250; locked.current = false; cursor.current = 0;
+    dtOn.current = false; dtLeftRef.current = 0;
+    setDtActive(false); setDtLeft(0); setTriggers(0);
     setRankIndex(rankFromHeat(250)); setCombo(0); setOrbs(0); setDt(0); setAnswered(0);
     setCounts({ SECURE: 0, FRAGILE: 0, GAP: 0, MISCONCEPTION: 0 }); setAgg({ sSum: 0, bSum: 0, vN: 0 });
     setBase(ARSENAL.map(() => ({ xp: 0, miss: 0 }))); setVerdict(null); setDone(false); setItem(null); setBooted(false);
@@ -310,10 +385,11 @@ export function Session() {
   }));
 
   return (
-    <div className="sx-root" ref={rootRef} style={{ ["--rank" as string]: RANKS[rankIndex].color }}>
+    <div className={`sx-root${dtActive ? " dt-on" : ""}`} ref={rootRef} style={{ ["--rank" as string]: RANKS[rankIndex].color }}>
       <div className="sx-grain" aria-hidden="true" />
       <canvas className="sx-fx" ref={canvasRef} aria-hidden="true" />
       <div className="sx-dmg" ref={dmgRef} aria-hidden="true" />
+      <div className="sx-dtfx" aria-hidden="true"><i className="sx-embers" /><i className="sx-dtflash" ref={dtFxRef} /></div>
 
       <header className="sx-top">
         <div className="sx-brand">
@@ -368,7 +444,10 @@ export function Session() {
           <div className="sx-results">
             <div className="sx-rhead">
               <span className="sx-rtitle">Mission clear</span>
-              <span className="sx-rsub">{answered} encounters · rank {RANKS[rankIndex].k} · {orbs.toLocaleString()} red orbs</span>
+              <span className="sx-rsub">
+                {answered} encounters · rank {RANKS[rankIndex].k} · {orbs.toLocaleString()} red orbs
+                {triggers > 0 && <> · <b className="sx-rtrig">⟁ {triggers} devil trigger{triggers > 1 ? "s" : ""}</b></>}
+              </span>
             </div>
 
             <div className="sx-cellrow">
@@ -442,9 +521,23 @@ export function Session() {
             </div>
           </div>
           <div className={`sx-combo${combo === 0 ? " zero" : ""}`} ref={comboRef}>{combo}<small>× COMBO</small></div>
-          <div className="sx-dt">
-            <div className="sx-dtlab">Devil Trigger{dt >= 100 ? " · ready" : ""}</div>
-            <div className={`sx-dtbar${dt >= 100 ? " full" : ""}`}><div className="sx-dtfill" style={{ width: `${Math.min(100, dt)}%` }} /></div>
+          <div className={`sx-dt${dtActive ? " on" : ""}`} aria-live="polite">
+            <div className="sx-dtlab">
+              <span>Devil Trigger{dtActive ? " · unleashed" : dt >= 100 ? " · ready" : ""}</span>
+              {dtActive
+                ? <b className="sx-dtleft">{dtLeft} left</b>
+                : dt >= 100
+                  ? <button className="sx-unleash" onClick={unleash}>Unleash<kbd>T</kbd></button>
+                  : null}
+            </div>
+            <div className={`sx-dtbar${dt >= 100 ? " full" : ""}${dtActive ? " live" : ""}`}>
+              <div className="sx-dtfill" style={{ width: `${dtActive ? 100 : Math.min(100, dt)}%` }} />
+            </div>
+            {triggers > 0 && (
+              <div className="sx-dttally" title={`${triggers} unleashed this sitting`}>
+                {"⟁".repeat(Math.min(triggers, 6))}{triggers > 6 ? ` ×${triggers}` : ""}
+              </div>
+            )}
           </div>
           <div className="sx-orbs"><Icon id="s-orb" /><div><div className="n">{orbs.toLocaleString()}</div><div className="l">Red orbs</div></div></div>
           {lens && (
