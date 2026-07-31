@@ -3,6 +3,8 @@
 import os
 import tempfile
 
+import pytest
+
 # Point the engine at a throwaway DB *before* importing the app (db.py reads
 # HYPERION_DB at import time). Demo seed on so the console has data.
 _TMP = tempfile.mkdtemp()
@@ -331,3 +333,26 @@ def test_health_and_lan_page():
     assert page.status_code == 200
     assert "http://" in page.text
     assert "cdn" not in page.text.lower()  # offline-safe: no external asset
+
+
+def test_projector_qr_is_scalable():
+    """The QR must carry a viewBox, or the page cannot resize it.
+
+    Without one the SVG has no coordinate system to map onto its box: CSS
+    resizes the frame while the artwork stays at its natural size, so the code
+    sits off-centre and gets cropped as soon as the box is the smaller of the
+    two. It has to stay square, too — a stretched QR will not scan.
+    """
+    import re
+
+    from app import lan
+
+    svg = lan.qr_svg("http://192.168.1.50:8000")
+    if svg is None:
+        pytest.skip("segno not installed; the page falls back to the URL alone")
+
+    box = re.search(r'viewBox="([\d.]+) ([\d.]+) ([\d.]+) ([\d.]+)"', svg)
+    assert box, "QR SVG has no viewBox — it will not scale"
+    assert box.group(3) == box.group(4), "QR viewBox is not square"
+    # Intrinsic size kept alongside, so it still sizes sanely with no CSS.
+    assert re.search(r'\bwidth="[\d.]+"', svg) and re.search(r'\bheight="[\d.]+"', svg)

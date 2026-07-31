@@ -49,17 +49,38 @@ def server_urls(port: int) -> List[str]:
 
 
 def qr_svg(url: str, scale: int = 8) -> Optional[str]:
-    """Inline SVG QR code for ``url``, or ``None`` when ``segno`` is absent."""
+    """Inline SVG QR code for ``url``, or ``None`` when ``segno`` is absent.
+
+    segno emits ``width``/``height`` but no ``viewBox``, which leaves the SVG
+    with no scalable coordinate system: CSS can resize the *box* while the
+    artwork stays pinned at its natural size, so the code sits in the top-left
+    of an over-large frame — and is cropped outright once the box is smaller
+    than the code, which is what a projector at any modest width produces.
+
+    Adding the viewBox makes it scale properly. The intrinsic width/height are
+    kept alongside it so the code still has a sensible size if the page's CSS
+    never loads, and so ``height: auto`` has a ratio to work from.
+    """
     try:
         import segno  # type: ignore
     except ImportError:
         return None
     import io
+    import re
 
     # segno's SVG serializer emits bytes; the page needs a str to inline.
     buf = io.BytesIO()
     segno.make(url, error="m").save(buf, kind="svg", scale=scale, xmldecl=False, svgns=True)
-    return buf.getvalue().decode("utf-8")
+    svg = buf.getvalue().decode("utf-8")
+
+    # Guarded so a future segno that emits its own viewBox is left alone.
+    if "viewBox" not in svg:
+        dims = re.search(r'<svg[^>]*?\bwidth="([\d.]+)"[^>]*?\bheight="([\d.]+)"', svg)
+        if dims:
+            svg = svg.replace(
+                "<svg", f'<svg viewBox="0 0 {dims.group(1)} {dims.group(2)}"', 1
+            )
+    return svg
 
 
 def default_port() -> int:
