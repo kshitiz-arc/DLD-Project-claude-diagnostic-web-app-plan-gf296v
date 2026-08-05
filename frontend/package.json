@@ -4,6 +4,11 @@
   "version": "0.1.0",
   "type": "module",
   "description": "HYPERION diagnostic web app — React (Vite + TS) frontend",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/kshitiz-arc/HYPERION.git"
+  },
+  "homepage": "https://github.com/kshitiz-arc/HYPERION",
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",

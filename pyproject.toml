@@ -3,12 +3,21 @@ requires = ["setuptools>=61"]
 build-backend = "setuptools.build_meta"
 
 [project]
+# The distribution name stays "diagnostic-scoring" deliberately, even though
+# the repo is HYPERION. This package ships only src/diagnostic_scoring — the
+# analytical core — not the backend or the frontend. Calling it "hyperion"
+# would mean `pip install hyperion` hands someone the scoring engine alone and
+# leaves them wondering where the application went.
 name = "diagnostic-scoring"
 version = "0.1.0"
 description = "Signed-certainty diagnostic scoring engine for the Class 7 mathematics pre-requisite audit"
 readme = "README.md"
 requires-python = ">=3.9"
 dependencies = []
+
+[project.urls]
+Homepage = "https://github.com/kshitiz-arc/HYPERION"
+Repository = "https://github.com/kshitiz-arc/HYPERION"
 
 [project.optional-dependencies]
 dev = ["pytest>=7"]
